@@ -1,0 +1,50 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────
+# Phase 1: Only the gateway + DB are needed.
+# Redis is included here but NOT used yet — Phase 2+ will use it.
+# Auth is handled by Flutter — no auth container needed.
+# ──────────────────────────────────────────────────────────
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - STORAGE_BACKEND=local
+      - LOCAL_STORAGE_PATH=/app/uploads
+      - USE_GPU=false            # CPU mode — no GPU needed
+    volumes:
+      - ./uploads:/app/uploads
+      - ./services/image_studio/models:/app/services/image_studio/models
+    # NOTE: No DB dependency in Phase 1 — image pipeline doesn't use DB yet
+
+  # ── PostgreSQL — needed from Phase 2 onwards (storing product data) ──
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: shilpsetu
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: shilpsetu
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shilpsetu"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis — needed from Phase 2 onwards (caching, task queue) ──
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
+
