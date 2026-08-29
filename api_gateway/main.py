@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api_gateway.logger import get_logger
 from services.image_studio.main import image_router
+from services.voice_cataloger.main import voice_router
 
 logger = get_logger(__name__)
 
@@ -42,6 +43,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # ── Routers ────────────────────────────────────────────────────────
 # NOTE: Auth is handled by Flutter — we do NOT manage login/tokens here
 app.include_router(image_router, prefix="/api/v1/image", tags=["Image Studio"])
+app.include_router(voice_router, prefix="/api/v1/catalog/voice", tags=["Voice Cataloger"])
 
 
 # ── Health check ───────────────────────────────────────────────────
