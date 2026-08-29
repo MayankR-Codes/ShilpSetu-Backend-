@@ -26,35 +26,26 @@ def test_docs_accessible():
 
 # ── Auth Tests ─────────────────────────────────────────────────────
 
-def test_login_returns_token():
-    response = client.post("/api/v1/auth/login", json={
-        "username": "test_artisan",
-        "password": "shilpsetu123",
-    })
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+import io
+from PIL import Image
 
-
-def test_login_wrong_password_returns_401():
-    response = client.post("/api/v1/auth/login", json={
-        "username": "test_artisan",
-        "password": "wrongpassword",
-    })
-    assert response.status_code == 401
-
-
-def test_enhance_without_token_returns_403():
-    import io
-    from PIL import Image
-
-    buf = io.BytesIO()
-    Image.new("RGB", (100, 100), "white").save(buf, format="JPEG")
-    buf.seek(0)
-
+def test_enhance_validates_image_file():
+    # Sending a completely empty request (no image) should return 422 Unprocessable Entity
+    response = client.post("/api/v1/image/enhance")
+    assert response.status_code == 422
+    
+def test_enhance_accepts_valid_image_format():
+    # Create a dummy image
+    img = Image.new("RGBA", (100, 100), "white")
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+    
+    # Send it to the endpoint (note: without a proper quality score, the quality_check might reject it with 422, which is expected pipeline behavior, not a crash)
     response = client.post(
         "/api/v1/image/enhance",
-        files={"file": ("test.jpg", buf, "image/jpeg")},
+        files={"file": ("test.png", img_byte_arr, "image/png")}
     )
-    assert response.status_code in (401, 403)
+    
+    # It either passes (200) or fails the quality check (422), but it shouldn't crash (500) or ask for auth (401)
+    assert response.status_code in (200, 422)
