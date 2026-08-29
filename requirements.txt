@@ -35,3 +35,12 @@ python-dotenv==1.0.1
 structlog==24.4.0
 httpx==0.28.0
 aiofiles==24.1.0
+
+# ─────────────────────────────────────────
+# Phase 2: Voice Cataloger (Lightweight)
+# ─────────────────────────────────────────
+openai-whisper==20240930      # Audio to text (using 'base' model - 145MB)
+google-generativeai==0.8.0    # Gemini 1.5 Flash API (0MB local)
+deep-translator==1.11.4       # Free translation without heavy 1.2GB local models
+pydub==0.25.1                 # Audio format handling
+ffmpeg-python==0.2.0          # Required for Whisper audio decoding
