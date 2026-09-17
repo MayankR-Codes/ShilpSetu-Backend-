@@ -16,6 +16,9 @@ from fastapi.staticfiles import StaticFiles
 from api_gateway.logger import get_logger
 from services.image_studio.main import image_router
 from services.voice_cataloger.main import voice_router
+from services.catalog.main import catalog_router
+from shared.db.models import Base
+from shared.db.session import engine
 
 logger = get_logger(__name__)
 
@@ -44,6 +47,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # NOTE: Auth is handled by Flutter — we do NOT manage login/tokens here
 app.include_router(image_router, prefix="/api/v1/image", tags=["Image Studio"])
 app.include_router(voice_router, prefix="/api/v1/catalog/voice", tags=["Voice Cataloger"])
+app.include_router(catalog_router, prefix="/api/v1/products", tags=["Product Catalog"])
 
 
 # ── Health check ───────────────────────────────────────────────────
@@ -56,6 +60,13 @@ async def health():
 # ── Startup / shutdown events ──────────────────────────────────────
 @app.on_event("startup")
 async def on_startup():
+    logger.info("ShilpSetu API Gateway starting up...")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables initialized successfully")
+    except Exception as e:
+        logger.warning(f"Database table auto-init deferred or failed: {e}")
     logger.info("ShilpSetu API Gateway started")
 
 
