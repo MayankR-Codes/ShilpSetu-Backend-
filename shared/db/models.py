@@ -1,7 +1,7 @@
 """SQLAlchemy async models for ShilpSetu."""
 
 from datetime import datetime
-from sqlalchemy import String, DateTime, Integer, Float, Text
+from sqlalchemy import String, DateTime, Integer, Float, Text, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -26,6 +26,8 @@ class Product(Base):
     price_suggested: Mapped[float] = mapped_column(Float, nullable=True)
     price_min: Mapped[float] = mapped_column(Float, nullable=True)
     price_max: Mapped[float] = mapped_column(Float, nullable=True)
+    features: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
+    tags: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
