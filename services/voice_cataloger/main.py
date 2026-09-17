@@ -62,42 +62,24 @@ async def process_voice_note(
     )
 
 # ---------------------------------------------------------
-# Sprint 2.3: Database Save & Fetch Endpoints
+# Backwards-compatibility aliases (Prefer /api/v1/products)
 # ---------------------------------------------------------
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from fastapi import Depends
 from shared.db.session import get_db
-from shared.db.models import Product
+from services.catalog.main import ProductCreate, create_product, get_catalog_feed
 
-class ProductCreate(BaseModel):
-    artisan_id: str
-    title_en: str
-    title_hi: str
-    description_en: str
-    description_hi: str
-    enhanced_image_url: str  # URL saved from Phase 1
 
-@voice_router.post("/save")
+@voice_router.post("/save", tags=["Voice Cataloger (Legacy)"])
 async def save_product_to_db(product: ProductCreate, db: AsyncSession = Depends(get_db)):
-    """Saves the finalized catalog item and image URL to the database."""
-    new_product = Product(
-        artisan_id=product.artisan_id,
-        title_en=product.title_en,
-        title_hi=product.title_hi,
-        description_en=product.description_en,
-        description_hi=product.description_hi,
-        enhanced_image_url=product.enhanced_image_url
-    )
-    db.add(new_product)
-    await db.commit()
-    await db.refresh(new_product)
-    return {"status": "success", "product_id": new_product.id}
+    """[Legacy alias] Saves the finalized catalog item to the database. Use POST /api/v1/products instead."""
+    created = await create_product(product, db)
+    return {"status": "success", "product_id": created.id}
 
-@voice_router.get("/feed")
-async def get_catalog_feed(db: AsyncSession = Depends(get_db)):
-    """Flutter calls this to fetch all products to show in the app."""
-    result = await db.execute(select(Product).order_by(Product.created_at.desc()))
-    products = result.scalars().all()
-    return products
+
+@voice_router.get("/feed", tags=["Voice Cataloger (Legacy)"])
+async def legacy_get_catalog_feed(db: AsyncSession = Depends(get_db)):
+    """[Legacy alias] Fetches products. Use GET /api/v1/products/feed instead."""
+    return await get_catalog_feed(limit=50, offset=0, db=db)
+
 
