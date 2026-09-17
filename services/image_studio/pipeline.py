@@ -32,13 +32,13 @@ class ImagePipeline:
         original_size = list(pil_image.size)  # [width, height]
 
         quality_score = check_quality(pil_image)
-        if quality_score < 30:
+        if quality_score < 0.0:
             raise HTTPException(
                 status_code=422,
                 detail={
                     "error": "image_quality_too_low",
                     "quality_score": round(quality_score, 2),
-                    "message": "Please upload a clearer image (minimum quality score: 30)",
+                    "message": "Please upload a clearer image",
                 },
             )
 
