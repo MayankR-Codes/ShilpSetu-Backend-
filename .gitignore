@@ -1,16 +1,68 @@
+# Environment variables & secrets
 .env
+.env.*
+!.env.example
+
+# Python bytecode & cache
 __pycache__/
 *.py[cod]
+*$py.class
 *.pyo
-.DS_Store
-uploads/
-services/image_studio/models/*.pth
-services/image_studio/models/*.onnx
+
+# Virtual environments
 .venv/
 venv/
-*.egg-info/
-dist/
-build/
+ENV/
+env/
+
+# ML / AI Model weights (heavy binary files)
+*.pth
+*.pt
+*.onnx
+*.bin
+*.safetensors
+services/**/models/*
+!services/**/models/.gitkeep
+
+# Uploads & User generated / test media
+uploads/
+*.mp3
+*.wav
+*.m4a
+*.ogg
+*.flac
+*.aac
+
+# Scratch scripts & test outputs
+*_output.json
+test_output.json
+translation_output.json
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing & Coverage
 .pytest_cache/
 htmlcov/
 .coverage
+.coverage.*
+
+# Build & Packaging
+dist/
+build/
+*.egg-info/
+
