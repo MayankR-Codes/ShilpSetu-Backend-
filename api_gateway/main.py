@@ -17,6 +17,7 @@ from api_gateway.logger import get_logger
 from services.image_studio.main import image_router
 from services.voice_cataloger.main import voice_router
 from services.catalog.main import catalog_router
+from services.pricing_assistant.main import pricing_router
 from shared.db.models import Base
 from shared.db.session import engine
 
@@ -48,6 +49,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(image_router, prefix="/api/v1/image", tags=["Image Studio"])
 app.include_router(voice_router, prefix="/api/v1/catalog/voice", tags=["Voice Cataloger"])
 app.include_router(catalog_router, prefix="/api/v1/products", tags=["Product Catalog"])
+app.include_router(pricing_router, prefix="/api/v1/pricing", tags=["Pricing Assistant"])
 
 
 # ── Health check ───────────────────────────────────────────────────
