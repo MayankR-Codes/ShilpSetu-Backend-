@@ -19,10 +19,12 @@ from services.voice_cataloger.asr import transcribe_audio
 from services.voice_cataloger.translate import translate_catalog_text
 from services.voice_cataloger.description_gen import generate_catalog_listing
 from services.voice_cataloger.seo_injector import inject_seo_tags
+from services.pricing_assistant.model import PricingModel
 
 logger = get_logger(__name__)
 catalog_router = APIRouter()
 image_pipeline = ImagePipeline()
+pricing_engine = PricingModel()
 
 
 # ── Schemas ────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ class ProductCreate(BaseModel):
     price_min: Optional[float] = None
     price_max: Optional[float] = None
     features: Optional[List[str]] = []
+    why_buy: Optional[List[str]] = []
     tags: Optional[List[str]] = []
 
 
@@ -61,6 +64,7 @@ class ProductResponse(BaseModel):
     price_min: Optional[float] = None
     price_max: Optional[float] = None
     features: Optional[List[str]] = []
+    why_buy: Optional[List[str]] = []
     tags: Optional[List[str]] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -76,6 +80,7 @@ class UnifiedAIProductResponse(BaseModel):
     description_en: str
     description_hi: str
     features: List[str]
+    why_buy: List[str] = []
     tags: List[str]
     enhanced_image_url: str
     quality_score: float
@@ -83,6 +88,9 @@ class UnifiedAIProductResponse(BaseModel):
     raw_transcript: str
     processing_time_ms: int
     is_saved: bool
+    price_suggested: Optional[float] = None
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
 
 
 # ── Catalog Endpoints ──────────────────────────────────────────────
@@ -109,6 +117,7 @@ async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_
         price_min=product.price_min,
         price_max=product.price_max,
         features=product.features or [],
+        why_buy=product.why_buy or [],
         tags=product.tags or [],
     )
     db.add(new_product)
@@ -159,6 +168,7 @@ async def create_product_with_ai(
     image: UploadFile = File(..., description="Raw photo of artisan craft (JPEG/PNG/WebP)"),
     audio: UploadFile = File(..., description="Voice description of craft (MP3/WAV/M4A)"),
     artisan_id: str = Form(..., description="Unique ID of the artisan"),
+    category: Optional[str] = Form(None, description="Optional craft category (e.g. 'Textiles', 'Pottery')"),
     language_hint: Optional[str] = Form(None, description="Optional ISO code (e.g. 'hi')"),
     auto_save: bool = Form(True, description="Whether to automatically commit the listing to the database"),
     db: AsyncSession = Depends(get_db),
@@ -170,7 +180,8 @@ async def create_product_with_ai(
     1. Enhances image (background removal, upscaling, color correction).
     2. Transcribes voice note (Whisper), translates to English/Hindi, and structures with Gemini AI.
     3. Injects SEO tags.
-    4. Optionally saves the complete listing to the PostgreSQL catalog immediately.
+    4. Predicts fair market pricing range (XGBoost Pricing Assistant).
+    5. Optionally saves the complete listing to the PostgreSQL catalog immediately.
     """
     # 1. Validation
     if image.content_type not in ("image/jpeg", "image/png", "image/webp"):
@@ -205,7 +216,20 @@ async def create_product_with_ai(
     description_en = final_listing.get("description_en", "")
     description_hi = final_listing.get("description_hi", "")
     features = final_listing.get("features", [])
+    why_buy = final_listing.get("why_buy", [])
     seo_tags = final_listing.get("seo_tags", [])
+
+    # 5. Dynamic Pricing Assistant
+    pricing_pred = pricing_engine.predict_pricing(
+        image_input=image_bytes,
+        title=title_en,
+        description=description_en,
+        category=category,
+    )
+    price_range = pricing_pred["price_range"]
+    price_min = price_range["min"]
+    price_suggested = price_range["suggested"]
+    price_max = price_range["max"]
 
     product_id = None
     if auto_save:
@@ -215,15 +239,20 @@ async def create_product_with_ai(
             title_hi=title_hi,
             description_en=description_en,
             description_hi=description_hi,
+            category=category,
             enhanced_image_url=image_result["url"],
+            price_suggested=price_suggested,
+            price_min=price_min,
+            price_max=price_max,
             features=features,
+            why_buy=why_buy,
             tags=seo_tags,
         )
         db.add(new_product)
         await db.commit()
         await db.refresh(new_product)
         product_id = new_product.id
-        logger.info(f"AI unified creation auto-saved product ID {product_id}")
+        logger.info(f"AI unified creation auto-saved product ID {product_id} with suggested price ₹{price_suggested}")
 
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
@@ -235,6 +264,7 @@ async def create_product_with_ai(
         description_en=description_en,
         description_hi=description_hi,
         features=features,
+        why_buy=why_buy,
         tags=seo_tags,
         enhanced_image_url=image_result["url"],
         quality_score=image_result["quality_score"],
@@ -242,4 +272,7 @@ async def create_product_with_ai(
         raw_transcript=asr_result.get("text", ""),
         processing_time_ms=elapsed_ms,
         is_saved=auto_save,
+        price_suggested=price_suggested,
+        price_min=price_min,
+        price_max=price_max,
     )
