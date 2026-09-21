@@ -1,0 +1,124 @@
+{
+  "categories": {
+    "Textiles": {
+      "base_min_price": 800,
+      "base_suggested_price": 2200,
+      "base_max_price": 6500,
+      "avg_market_price": 2400,
+      "competitor_count": 230,
+      "craft_types": {
+        "Banarasi": { "min": 2500, "suggested": 5500, "max": 18000, "labor_factor": 1.8 },
+        "Kanjeevaram": { "min": 3500, "suggested": 7500, "max": 25000, "labor_factor": 2.0 },
+        "Chanderi": { "min": 1500, "suggested": 3200, "max": 8500, "labor_factor": 1.4 },
+        "Ikat": { "min": 1200, "suggested": 2800, "max": 7500, "labor_factor": 1.5 },
+        "Pochampally": { "min": 1800, "suggested": 3800, "max": 9500, "labor_factor": 1.6 },
+        "Bandhani": { "min": 900, "suggested": 2100, "max": 5500, "labor_factor": 1.3 },
+        "Phulkari": { "min": 1200, "suggested": 2600, "max": 6800, "labor_factor": 1.4 },
+        "Kalamkari": { "min": 1100, "suggested": 2400, "max": 6200, "labor_factor": 1.3 },
+        "Khadi": { "min": 600, "suggested": 1400, "max": 3500, "labor_factor": 1.1 }
+      }
+    },
+    "Pottery": {
+      "base_min_price": 250,
+      "base_suggested_price": 750,
+      "base_max_price": 2200,
+      "avg_market_price": 800,
+      "competitor_count": 145,
+      "craft_types": {
+        "Terracotta": { "min": 250, "suggested": 650, "max": 1900, "labor_factor": 1.2 },
+        "Khurja": { "min": 350, "suggested": 950, "max": 2800, "labor_factor": 1.3 },
+        "Blue Pottery": { "min": 500, "suggested": 1350, "max": 3800, "labor_factor": 1.5 },
+        "Black Pottery": { "min": 400, "suggested": 1100, "max": 3200, "labor_factor": 1.4 },
+        "Clay Decor": { "min": 200, "suggested": 550, "max": 1500, "labor_factor": 1.1 }
+      }
+    },
+    "Woodcraft": {
+      "base_min_price": 450,
+      "base_suggested_price": 1650,
+      "base_max_price": 5200,
+      "avg_market_price": 1750,
+      "competitor_count": 110,
+      "craft_types": {
+        "Saharanpur": { "min": 600, "suggested": 1800, "max": 5500, "labor_factor": 1.4 },
+        "Channapatna": { "min": 300, "suggested": 850, "max": 2400, "labor_factor": 1.2 },
+        "Sandalwood": { "min": 2500, "suggested": 6500, "max": 22000, "labor_factor": 2.2 },
+        "Walnut Wood": { "min": 1200, "suggested": 3400, "max": 9800, "labor_factor": 1.6 },
+        "Rosewood": { "min": 1500, "suggested": 4200, "max": 12500, "labor_factor": 1.7 }
+      }
+    },
+    "Metalcraft": {
+      "base_min_price": 600,
+      "base_suggested_price": 2100,
+      "base_max_price": 7500,
+      "avg_market_price": 2250,
+      "competitor_count": 95,
+      "craft_types": {
+        "Dhokra": { "min": 800, "suggested": 2400, "max": 7800, "labor_factor": 1.6 },
+        "Moradabad Brass": { "min": 750, "suggested": 2200, "max": 6800, "labor_factor": 1.4 },
+        "Bidriware": { "min": 1400, "suggested": 3800, "max": 11500, "labor_factor": 1.8 },
+        "Bronze": { "min": 1800, "suggested": 4900, "max": 16000, "labor_factor": 1.9 },
+        "Bell Metal": { "min": 900, "suggested": 2600, "max": 8200, "labor_factor": 1.5 }
+      }
+    },
+    "Jewelry": {
+      "base_min_price": 400,
+      "base_suggested_price": 1400,
+      "base_max_price": 4800,
+      "avg_market_price": 1500,
+      "competitor_count": 310,
+      "craft_types": {
+        "Meenakari": { "min": 650, "suggested": 1900, "max": 6200, "labor_factor": 1.5 },
+        "Kundan": { "min": 950, "suggested": 2800, "max": 9500, "labor_factor": 1.7 },
+        "Tribal Silver": { "min": 1200, "suggested": 3500, "max": 12000, "labor_factor": 1.8 },
+        "Terracotta Jewelry": { "min": 250, "suggested": 650, "max": 1800, "labor_factor": 1.1 },
+        "Filigree": { "min": 1100, "suggested": 3200, "max": 10500, "labor_factor": 1.7 }
+      }
+    },
+    "Paintings": {
+      "base_min_price": 700,
+      "base_suggested_price": 2500,
+      "base_max_price": 9500,
+      "avg_market_price": 2700,
+      "competitor_count": 80,
+      "craft_types": {
+        "Madhubani": { "min": 850, "suggested": 2800, "max": 9200, "labor_factor": 1.5 },
+        "Warli": { "min": 600, "suggested": 1900, "max": 6500, "labor_factor": 1.3 },
+        "Pattachitra": { "min": 1400, "suggested": 4200, "max": 14000, "labor_factor": 1.9 },
+        "Tanjore": { "min": 3200, "suggested": 8900, "max": 32000, "labor_factor": 2.3 },
+        "Gond": { "min": 900, "suggested": 2900, "max": 9800, "labor_factor": 1.5 },
+        "Pichwai": { "min": 1800, "suggested": 5500, "max": 18500, "labor_factor": 2.0 }
+      }
+    },
+    "Leather": {
+      "base_min_price": 500,
+      "base_suggested_price": 1450,
+      "base_max_price": 4200,
+      "avg_market_price": 1550,
+      "competitor_count": 75,
+      "craft_types": {
+        "Kolhapuri": { "min": 550, "suggested": 1400, "max": 3800, "labor_factor": 1.3 },
+        "Mojari": { "min": 600, "suggested": 1600, "max": 4200, "labor_factor": 1.3 },
+        "Shantiniketan": { "min": 750, "suggested": 1950, "max": 5400, "labor_factor": 1.4 }
+      }
+    }
+  },
+  "keyword_multipliers": {
+    "silk": 1.6,
+    "zari": 1.4,
+    "pure": 1.25,
+    "handwoven": 1.3,
+    "hand-carved": 1.35,
+    "brass": 1.4,
+    "bronze": 1.6,
+    "silver": 2.0,
+    "gold": 2.8,
+    "antique": 1.3,
+    "intricate": 1.25,
+    "natural dye": 1.2,
+    "organic": 1.15,
+    "teak": 1.4,
+    "sandalwood": 2.2,
+    "filigree": 1.5,
+    "vintage": 1.35
+  }
+}
