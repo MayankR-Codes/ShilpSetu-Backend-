@@ -110,7 +110,10 @@ Upload craft photo and audio in **one single request**.
   "detected_language": "hi",
   "raw_transcript": "yeh mitti ka phool daan hai jo maine banaya hai",
   "processing_time_ms": 2340,
-  "is_saved": true
+  "is_saved": true,
+  "price_suggested": 650.0,
+  "price_min": 487.5,
+  "price_max": 877.5
 }
 ```
 
@@ -165,8 +168,14 @@ Transcribes regional speech and formats with Gemini AI.
   "raw_transcript": "humne yeh banarsi saree hath se bun ke banayi hai",
   "title_en": "Authentic Handloom Banarasi Silk Saree",
   "title_hi": "प्रामाणिक हथकरघा बनारसी सिल्क साड़ी",
-  "description_en": "Exquisite handwoven Banarasi silk saree with intricate zari work...",
-  "description_hi": "जटिल ज़री के काम से सजी उत्कृष्ट हथकरघा बनारसी सिल्क साड़ी...",
+  "description_en": "Exquisite handwoven Banarasi silk saree with intricate zari work, hand-crafted by master weavers. Kiln-washed pure Katan silk with floral bootis brings royal heritage elegance to festive celebrations.",
+  "description_hi": "जटिल ज़री के काम से सजी उत्कृष्ट हथकरघा बनारसी सिल्क साड़ी, जिसे कुशल बुनकरों द्वारा हाथ से तैयार किया गया है।",
+  "why_buy": [
+    "Centuries-old authentic Banarasi handloom heritage with genuine human craftsmanship",
+    "Pure breathable Katan silk with pure golden zari motifs that retain lasting luster",
+    "Heirloom-quality statement attire perfect for weddings and sacred celebrations",
+    "Directly empowers traditional artisan weaver families in Varanasi"
+  ],
   "features": [
     "Pure silk fabric",
     "Traditional Zari border",
@@ -174,6 +183,49 @@ Transcribes regional speech and formats with Gemini AI.
   ],
   "seo_tags": ["banarasi saree", "handloom", "silk", "indian artisan", "vocal for local"],
   "processing_time_ms": 1850
+}
+```
+
+---
+
+### 🟢 Endpoint 3B: AI Vision Craft Description from Image (`POST /api/v1/catalog/voice/describe-image`)
+Upload a craft photo **without needing audio**. Gemini Vision automatically analyzes the craft image and produces the category, craft type, 3–4 line description, and **"Why Buy"** bullet points!
+
+* **Method:** `POST`
+* **Content-Type:** `multipart/form-data`
+* **Request Body:**
+  * `image`: Image file (`.jpg`, `.png`, `.webp`)
+  * `craft_hint`: Optional `String` (e.g. `"West Bengal Terracotta"`)
+
+* **Response (200 OK):**
+```json
+{
+  "category": "Pottery",
+  "craft_type": "Bankura Terracotta",
+  "title_en": "Handcrafted Bankura Terracotta Horse Sculpture",
+  "title_hi": "हस्तनिर्मित बांकुरा टेराकोटा मिट्टी का घोड़ा",
+  "description_en": "Meticulously hand-sculpted from pure alluvial riverbed clay, this iconic Bankura Terracotta Horse embodies centuries of traditional Indian folk art. Adorned with intricate hand-rolled clay ropes, ceremonial neckbands, and delicate hanging bell motifs, each detail is individually crafted before kiln firing. Its rich earthy tone and majestic posture bring authentic rustic charm and rich cultural heritage into any contemporary space.",
+  "description_hi": "पश्चिम बंगाल की प्राकृतिक मिट्टी से हस्तनिर्मित, यह प्रसिद्ध बांकुरा टेराकोटा घोड़ा पारंपरिक भारतीय लोक कला का उत्कृष्ट प्रतीक है। मिट्टी की बारीक मालाओं और पारंपरिक घंटियों से सजा यह शोपीस आपके घर को देहाती सौंदर्य से भर देता है।",
+  "why_buy": [
+    "Authentic heritage folk craft handcrafted by master potters from West Bengal",
+    "Intricate hand-applied clay relief detailing that machine molding cannot replicate",
+    "Brings an organic, warm earthy aesthetic and positive energy to modern home decor",
+    "100% eco-friendly, sustainable, and crafted from non-toxic natural clay"
+  ],
+  "features": [
+    "Hand-molded from natural unglazed riverbed clay",
+    "Intricate rope-twist neckbands and hanging bell applique work",
+    "Signature elongated erect ears and stylized regal posture",
+    "Kiln-baked to achieve a rich matte terracotta rust finish"
+  ],
+  "seo_tags": [
+    "bankura horse",
+    "terracotta craft",
+    "pottery",
+    "indian handicraft",
+    "vocal for local"
+  ],
+  "processing_time_ms": 2100
 }
 ```
 
@@ -228,6 +280,63 @@ Used for the buyer's home screen or artisan's listings with pagination.
     "created_at": "2026-09-18T00:15:30.123456"
   }
 ]
+```
+
+---
+
+### 🟢 Endpoint 6: Dynamic Pricing Assistant (`POST /api/v1/pricing/suggest`)
+Predict fair, market-competitive pricing for a handicraft using XGBoost machine learning & Indian handicraft benchmarks.
+
+* **Method:** `POST`
+* **Content-Type:** `application/json`
+* **Request Body:**
+```json
+{
+  "title": "Pure Handwoven Banarasi Silk Saree",
+  "description": "Handcrafted with pure gold zari and intricate royal floral motifs.",
+  "category": "Textiles",
+  "craft_type": "Banarasi",
+  "region": "Uttar Pradesh"
+}
+```
+
+* **Response (200 OK):**
+```json
+{
+  "price_range": {
+    "min": 4125.0,
+    "suggested": 5500.0,
+    "max": 7425.0
+  },
+  "currency": "INR",
+  "confidence": 0.88,
+  "market_insights": {
+    "category": "Textiles",
+    "craft_tier": "Master / Heritage Craft",
+    "avg_category_price": 2400.0,
+    "competitor_count": 230,
+    "pricing_strategy": "Fair Trade Artisan Benchmark",
+    "price_trend": "High Demand (Vocal for Local)"
+  }
+}
+```
+
+---
+
+### 🟢 Endpoint 7: Auto-Apply Pricing to Product (`POST /api/v1/pricing/apply/{product_id}`)
+Generates dynamic pricing for an existing product and automatically updates `price_suggested`, `price_min`, and `price_max` in the PostgreSQL database.
+
+* **Method:** `POST`
+* **Response (200 OK):**
+```json
+{
+  "status": "success",
+  "product_id": 42,
+  "price_suggested": 2200.0,
+  "price_min": 1650.0,
+  "price_max": 2970.0,
+  "confidence": 0.85
+}
 ```
 
 ---
@@ -299,6 +408,9 @@ class UnifiedAIResponse {
   final String rawTranscript;
   final int processingTimeMs;
   final bool isSaved;
+  final double? priceSuggested;
+  final double? priceMin;
+  final double? priceMax;
 
   UnifiedAIResponse({
     this.productId,
@@ -315,6 +427,9 @@ class UnifiedAIResponse {
     required this.rawTranscript,
     required this.processingTimeMs,
     required this.isSaved,
+    this.priceSuggested,
+    this.priceMin,
+    this.priceMax,
   });
 
   factory UnifiedAIResponse.fromJson(Map<String, dynamic> json) {
@@ -333,6 +448,39 @@ class UnifiedAIResponse {
       rawTranscript: json['raw_transcript'] ?? '',
       processingTimeMs: json['processing_time_ms'] ?? 0,
       isSaved: json['is_saved'] ?? false,
+      priceSuggested: (json['price_suggested'] as num?)?.toDouble(),
+      priceMin: (json['price_min'] as num?)?.toDouble(),
+      priceMax: (json['price_max'] as num?)?.toDouble(),
+    );
+  }
+}
+
+class PricingSuggestion {
+  final double min;
+  final double suggested;
+  final double max;
+  final String currency;
+  final double confidence;
+  final Map<String, dynamic> marketInsights;
+
+  PricingSuggestion({
+    required this.min,
+    required this.suggested,
+    required this.max,
+    required this.currency,
+    required this.confidence,
+    required this.marketInsights,
+  });
+
+  factory PricingSuggestion.fromJson(Map<String, dynamic> json) {
+    final pr = json['price_range'] ?? {};
+    return PricingSuggestion(
+      min: (pr['min'] as num?)?.toDouble() ?? 0.0,
+      suggested: (pr['suggested'] as num?)?.toDouble() ?? 0.0,
+      max: (pr['max'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] ?? 'INR',
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      marketInsights: Map<String, dynamic>.from(json['market_insights'] ?? {}),
     );
   }
 }
@@ -465,6 +613,34 @@ class ShilpSetuApiService {
 
     final List list = response.data;
     return list.map((item) => Product.fromJson(item)).toList();
+  }
+
+  // ── 6. DYNAMIC PRICING ASSISTANT ───────────────────────────────────────────
+  Future<PricingSuggestion> suggestPrice({
+    required String title,
+    String? description,
+    String? category,
+    String? craftType,
+    String? region,
+  }) async {
+    final response = await _dio.post(
+      '/api/v1/pricing/suggest',
+      data: {
+        'title': title,
+        if (description != null) 'description': description,
+        if (category != null) 'category': category,
+        if (craftType != null) 'craft_type': craftType,
+        if (region != null) 'region': region,
+      },
+    );
+
+    return PricingSuggestion.fromJson(response.data);
+  }
+
+  // ── 7. APPLY PRICING TO PRODUCT ────────────────────────────────────────────
+  Future<Map<String, dynamic>> applyPriceToProduct(int productId) async {
+    final response = await _dio.post('/api/v1/pricing/apply/$productId');
+    return response.data; // contains 'price_suggested', 'price_min', 'price_max'
   }
 }
 ```
