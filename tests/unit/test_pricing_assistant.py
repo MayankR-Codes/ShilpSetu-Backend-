@@ -152,3 +152,68 @@ def test_apply_pricing_to_product_endpoint():
         assert data["price_min"] <= data["price_suggested"] <= data["price_max"]
     finally:
         app.dependency_overrides.clear()
+
+
+def test_artisan_cost_plus_floor_protection():
+    """Artisan provides raw material cost and desired minimum profit; ensure minimum floor is never violated."""
+    model = PricingModel()
+    result = model.predict_pricing(
+        title="Handcrafted Terracotta Planter",
+        description="Earthy clay planter pot",
+        category="Pottery",
+        craft_type="Terracotta",
+        raw_material_cost=300.0,
+        min_profit=250.0,
+    )
+    cost_info = result.get("cost_analysis")
+    assert cost_info is not None
+    assert cost_info["raw_material_cost"] == 300.0
+    assert cost_info["min_profit_desired"] == 250.0
+    assert cost_info["cost_floor"] == 550.0
+    assert result["price_range"]["min"] >= 550.0
+    assert result["price_range"]["suggested"] >= 550.0
+    assert cost_info["projected_profit"] >= 250.0
+
+
+def test_artisan_cost_plus_market_surplus():
+    """When market value exceeds cost floor, artisan enjoys extra surplus profit."""
+    model = PricingModel()
+    result = model.predict_pricing(
+        title="Pure Katan Silk Banarasi Saree",
+        description="Handwoven pure silk bridal saree with gold zari work.",
+        category="Textiles",
+        craft_type="Banarasi",
+        raw_material_cost=2000.0,
+        min_profit=1500.0,
+    )
+    cost_info = result.get("cost_analysis")
+    assert cost_info is not None
+    assert cost_info["cost_floor"] == 3500.0
+    # Banarasi saree market valuation is typically >= ₹6000
+    assert result["price_range"]["suggested"] >= 3500.0
+    assert cost_info["surplus_above_min_profit"] >= 0
+    assert cost_info["profit_margin_pct"] > 0
+    assert "Market Value Premium" in result["market_insights"]["pricing_strategy"]
+
+
+def test_suggest_endpoint_with_artisan_cost_inputs():
+    """Test API endpoint /suggest with raw_material_cost and min_profit."""
+    payload = {
+        "title": "Channapatna Wooden Stacking Toy",
+        "description": "Safe natural lacquer non-toxic wooden toy for kids.",
+        "category": "Woodcraft",
+        "craft_type": "Channapatna",
+        "raw_material_cost": 180.0,
+        "min_profit": 120.0,
+    }
+    response = client.post("/api/v1/pricing/suggest", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "cost_analysis" in data
+    cost_data = data["cost_analysis"]
+    assert cost_data["raw_material_cost"] == 180.0
+    assert cost_data["min_profit_desired"] == 120.0
+    assert cost_data["cost_floor"] == 300.0
+    assert data["price_range"]["min"] >= 300.0
+    assert cost_data["projected_profit"] >= 120.0
+
