@@ -123,9 +123,9 @@ def test_legacy_voice_save_and_feed(mock_db):
 @patch("services.catalog.main.image_pipeline.run")
 @patch("services.catalog.main.transcribe_audio")
 @patch("services.catalog.main.translate_catalog_text")
-@patch("services.catalog.main.generate_catalog_listing")
+@patch("services.catalog.main.generate_fused_catalog_listing")
 def test_unified_ai_product_creation(
-    mock_llm, mock_trans, mock_asr, mock_img_pipeline, mock_db
+    mock_fused, mock_trans, mock_asr, mock_img_pipeline, mock_db
 ):
     # 1. Mock image enhancement pipeline
     mock_img_pipeline.return_value = {
@@ -148,7 +148,7 @@ def test_unified_ai_product_creation(
     }
 
     # 4. Mock LLM generator
-    mock_llm.return_value = {
+    mock_fused.return_value = {
         "title_en": "Artisanal Handmade Clay Water Pot",
         "title_hi": "पारंपरिक हस्तनिर्मित मिट्टी का घड़ा",
         "description_en": "Keep your water naturally cool with this artisanal clay pot.",
@@ -190,3 +190,85 @@ def test_unified_ai_product_creation(
     assert data["product_id"] is not None
     assert "handmade" in data["tags"]
     assert len(data["features"]) == 3
+
+
+@patch("services.catalog.main.image_pipeline.run")
+@patch("services.catalog.main.generate_description_from_image")
+def test_create_product_photo_only(mock_img_desc, mock_img_pipeline, mock_db):
+    """Test Mode 2: Photo-only creation when no voice note is provided."""
+    mock_img_pipeline.return_value = {
+        "url": "/uploads/products/pot_photo.webp",
+        "quality_score": 90.0,
+        "original_size": [600, 600],
+        "enhanced_size": [1200, 1200],
+    }
+    mock_img_desc.return_value = {
+        "title_en": "Rustic Terracotta Tea Cups Set",
+        "title_hi": "मिट्टी के कुल्हड़",
+        "description_en": "Handcrafted earthen cups for traditional chai.",
+        "description_hi": "पारंपरिक चाय के लिए हस्तनिर्मित मिट्टी के कप।",
+        "features": ["Unglazed clay", "Authentic aroma", "Biodegradable"],
+        "seo_tags": ["kulhad", "chai cups", "pottery"],
+    }
+
+    img = Image.new("RGB", (80, 80), color="orange")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+
+    response = client.post(
+        "/api/v1/products/create-ai",
+        files={"image": ("cups.png", buf.getvalue(), "image/png")},
+        data={"artisan_id": "artisan_photo_only", "auto_save": "true"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["artisan_id"] == "artisan_photo_only"
+    assert data["title_en"] == "Rustic Terracotta Tea Cups Set"
+    assert data["enhanced_image_url"] == "/uploads/products/pot_photo.webp"
+    assert data["detected_language"] == "visual"
+    assert data["product_id"] is not None
+
+
+@patch("services.catalog.main.transcribe_audio")
+@patch("services.catalog.main.translate_catalog_text")
+@patch("services.catalog.main.generate_catalog_listing")
+def test_create_product_voice_only(mock_llm, mock_trans, mock_asr, mock_db):
+    """Test Mode 3: Voice-only creation when no photo is provided."""
+    mock_asr.return_value = {"text": "yeh pure silk saree hai", "language": "hi"}
+    mock_trans.return_value = {"english": "This is a pure silk saree.", "hindi": "यह एक शुद्ध रेशम साड़ी है।"}
+    mock_llm.return_value = {
+        "title_en": "Pure Banarasi Katan Silk Saree",
+        "title_hi": "शुद्ध बनारसी कतान सिल्क साड़ी",
+        "description_en": "Handloom woven silk saree with gold zari work.",
+        "description_hi": "सोने की ज़री के काम वाली हथकरघा रेशम साड़ी।",
+        "features": ["Pure Katan Silk", "Handloom woven", "Rich zari pallu"],
+        "seo_tags": ["banarasi saree", "pure silk", "handloom"],
+    }
+
+    audio_bytes = b"FAKE_AUDIO_DATA" * 50
+
+    response = client.post(
+        "/api/v1/products/create-ai",
+        files={"audio": ("saree_voice.mp3", audio_bytes, "audio/mpeg")},
+        data={"artisan_id": "artisan_voice_only", "auto_save": "true"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["artisan_id"] == "artisan_voice_only"
+    assert data["title_en"] == "Pure Banarasi Katan Silk Saree"
+    assert data["enhanced_image_url"] is None
+    assert data["detected_language"] == "hi"
+    assert data["product_id"] is not None
+
+
+def test_create_product_neither_provided():
+    """Verify 400 Bad Request when neither image nor audio is provided."""
+    response = client.post(
+        "/api/v1/products/create-ai",
+        data={"artisan_id": "artisan_empty"},
+    )
+    assert response.status_code == 400
+    assert "Please provide at least a product photo" in response.json()["detail"]
+
