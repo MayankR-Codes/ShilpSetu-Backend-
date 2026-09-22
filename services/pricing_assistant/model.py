@@ -51,12 +51,17 @@ class PricingModel:
         category: Optional[str] = None,
         craft_type: Optional[str] = None,
         region: Optional[str] = None,
+        raw_material_cost: Optional[float] = None,
+        min_profit: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Predicts optimal price range and provides market intelligence.
+        Optionally incorporates artisan's raw material cost and minimum profit target
+        to ensure cost-plus floor protection and maximized artisan earnings.
 
         Returns:
-            Dict with price_range (min, suggested, max), confidence, currency, and market_insights.
+            Dict with price_range (min, suggested, max), confidence, currency, market_insights,
+            and optional cost_analysis.
         """
         # 1. Extract 64-dim feature vector
         features = self.feature_extractor.extract_features(
@@ -85,17 +90,69 @@ class PricingModel:
             suggested = bench_res["suggested"]
             confidence = 0.82 if bench_res.get("category_matched") else 0.65
 
-        # 4. Enforce realistic price boundaries
+        # 4. Enforce realistic baseline price boundaries
         min_bound = bench_res["min"]
         max_bound = bench_res["max"]
-
-        # Ensure suggested is within bounds
         suggested = max(min_bound, min(suggested, max_bound))
-        price_min = round(max(50.0, suggested * 0.75), 2)
-        price_suggested = round(suggested, 2)
-        price_max = round(suggested * 1.35, 2)
 
-        # 5. Market Insights
+        # 5. Artisan Cost-Plus Floor Synthesis
+        cost_analysis = None
+        has_cost_inputs = (raw_material_cost is not None and raw_material_cost > 0) or (
+            min_profit is not None and min_profit > 0
+        )
+
+        pricing_strategy = "Fair Trade Artisan Benchmark"
+
+        if has_cost_inputs:
+            material_cost = float(raw_material_cost or 0.0)
+            desired_profit = float(min_profit or 0.0)
+            cost_floor = material_cost + desired_profit
+
+            if suggested >= cost_floor:
+                # Market pays higher than artisan's minimum threshold
+                price_suggested = round(suggested, 2)
+                # Ensure discount / min price never dips below cost_floor
+                price_min = round(max(cost_floor, price_suggested * 0.80), 2)
+                price_max = round(max(price_suggested * 1.35, cost_floor * 1.35), 2)
+                pricing_strategy = "Market Value Premium"
+                projected_profit = round(price_suggested - material_cost, 2)
+                surplus = round(projected_profit - desired_profit, 2)
+                margin_pct = round((projected_profit / price_suggested) * 100, 2) if price_suggested > 0 else 0.0
+                artisan_note = (
+                    f"Market demand for this craft allows a price of Rs. {price_suggested:,.2f}. "
+                    f"You earn Rs. {projected_profit:,.2f} profit (Rs. {surplus:,.2f} extra surplus above your Rs. {desired_profit:,.2f} target)."
+                )
+            else:
+                # Market baseline is lower than artisan's cost + minimum profit
+                # Elevate suggested price to strictly protect artisan profit
+                price_suggested = round(cost_floor * 1.05, 2)
+                price_min = round(cost_floor, 2)
+                price_max = round(cost_floor * 1.35, 2)
+                pricing_strategy = "Cost-Plus Artisan Floor Protected"
+                projected_profit = round(price_suggested - material_cost, 2)
+                surplus = round(projected_profit - desired_profit, 2)
+                margin_pct = round((projected_profit / price_suggested) * 100, 2) if price_suggested > 0 else 0.0
+                artisan_note = (
+                    f"To guarantee your required Rs. {desired_profit:,.2f} profit over Rs. {material_cost:,.2f} raw materials, "
+                    f"the price floor is set to Rs. {price_suggested:,.2f}. Highlight handmade uniqueness and heritage to buyers."
+                )
+
+            cost_analysis = {
+                "raw_material_cost": round(material_cost, 2),
+                "min_profit_desired": round(desired_profit, 2),
+                "cost_floor": round(cost_floor, 2),
+                "suggested_price": price_suggested,
+                "projected_profit": projected_profit,
+                "profit_margin_pct": margin_pct,
+                "surplus_above_min_profit": surplus,
+                "artisan_note": artisan_note,
+            }
+        else:
+            price_min = round(max(50.0, suggested * 0.75), 2)
+            price_suggested = round(suggested, 2)
+            price_max = round(suggested * 1.35, 2)
+
+        # 6. Market Insights
         category_name = (category or "Handicraft").strip().title()
         cat_info = self.benchmarks.get("categories", {}).get(category_name, {})
         avg_market_price = cat_info.get("avg_market_price", price_suggested)
@@ -103,12 +160,12 @@ class PricingModel:
 
         # Identify craft tier
         craft_tier = "Standard Craft"
-        if suggested > avg_market_price * 1.5:
+        if price_suggested > avg_market_price * 1.5:
             craft_tier = "Master / Heritage Craft"
-        elif suggested > avg_market_price * 1.1:
+        elif price_suggested > avg_market_price * 1.1:
             craft_tier = "Premium Artisan"
 
-        return {
+        result = {
             "price_range": {
                 "min": price_min,
                 "suggested": price_suggested,
@@ -121,10 +178,14 @@ class PricingModel:
                 "craft_tier": craft_tier,
                 "avg_category_price": avg_market_price,
                 "competitor_count": competitors,
-                "pricing_strategy": "Fair Trade Artisan Benchmark",
+                "pricing_strategy": pricing_strategy,
                 "price_trend": "High Demand (Vocal for Local)",
             },
         }
+        if cost_analysis is not None:
+            result["cost_analysis"] = cost_analysis
+
+        return result
 
     def _compute_benchmark_price(
         self,
