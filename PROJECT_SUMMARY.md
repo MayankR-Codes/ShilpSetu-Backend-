@@ -46,15 +46,19 @@ Your Flutter developer can currently use this API to do four major things:
 
 ---
 
-## 🚀 What's Next: Future Roadmap (Phases 4 & 5)
+### Phase 4: Smart Product Classifier (Completed)
+* **Visual Craft Taxonomy Engine:** Classifies craft photos into 10 primary Indian handicraft categories and 50+ sub-categories.
+* **Geographical Indication (GI Tag) Registry:** Auto-detects authentic Indian regional craft heritages (Bankura Terracotta, Banarasi Silk, Channapatna Toys, Moradabad Brass, Madhubani Art, etc.).
+* **Raw Material Breakdown & Proportions:** Allows artisans to declare their material composition with percentages, or automatically infers estimated material percentages from visual texture analysis.
 
-While Phase 1, 2, and 3 provide end-to-end cataloging and pricing, the final phases will introduce classification and recommendations.
+---
 
-### Phase 4: Smart Product Classifier
-We will fine-tune an **EfficientNet-B4** or zero-shot vision model on a custom dataset of Indian handicrafts. When an artisan uploads a photo, the AI will instantly categorize it (e.g., *Terracotta -> Home Decor -> Animal Figurines*) without them having to click through long menus.
+## 🚀 Final Remaining Roadmap: Phase 5
 
-### Phase 5: Buyer Match & Recommendation (FAISS)
-To connect buyers to the right artisans, we will implement **Semantic Search**. We will store all product embeddings in a **FAISS / pgvector Database**. When a buyer searches for "red clay elephant," the system will mathematically match the meaning of their query to the embeddings of our products, delivering highly accurate recommendations even if the exact keywords don't match.
+With Phases 1, 2, 3, and 4 complete, only **1 final pillar** remains:
+
+### Phase 5: Semantic Buyer Search & Recommendation Engine (FAISS)
+To connect buyers to the right artisans, we will implement **Semantic Vector Search**. We will store multimodal and textual product embeddings in a **FAISS / pgvector Vector Index**. When a buyer searches conversationally for "earthy rustic table decor" or "gift for cat lover", the system mathematically matches semantic similarity, discovering artisan products even without exact keyword overlap.
 
 ---
 

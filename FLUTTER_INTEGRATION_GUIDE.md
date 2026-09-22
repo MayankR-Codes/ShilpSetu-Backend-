@@ -374,6 +374,103 @@ Generates dynamic pricing for an existing product and automatically updates `pri
 
 ---
 
+### 🟢 Endpoint 8: Smart Product Classifier (`POST /api/v1/classifier/classify`)
+Automatically recognizes the craft category, sub-category, regional craft heritage, GI-tag status, and material composition percentages directly from the craft photo.
+
+* **Method:** `POST`
+* **Content-Type:** `multipart/form-data`
+* **Request Body:**
+  * `image`: Image file (`.jpg`, `.png`, `.webp`)
+  * `artisan_materials`: Optional JSON string of declared materials (e.g. `[{"material": "River Stone", "percentage": 60}, {"material": "Raw Wood", "percentage": 40}]`)
+  * `artisan_hint`: Optional `String` context
+
+* **Response (200 OK):**
+```json
+{
+  "primary_category": "Home Decor",
+  "sub_category": "Wood Slice & Log Crafts",
+  "craft_heritage": "Pebble Art & Rustic Woodcraft",
+  "region_of_origin": "Himalayan & River Plains, Pan-India",
+  "gi_tagged": false,
+  "materials_breakdown": [
+    {
+      "material": "River Stone",
+      "percentage": 60.0
+    },
+    {
+      "material": "Raw Wood Slice",
+      "percentage": 40.0
+    }
+  ],
+  "craft_technique": "Hand-painted smooth river stone assembled on organic wood log slice",
+  "confidence": 0.94,
+  "alternate_categories": [
+    {
+      "category": "Stonecraft",
+      "confidence": 0.82
+    }
+  ]
+}
+```
+
+---
+
+### 🟢 Endpoint 9: Fetch Craft Taxonomy (`GET /api/v1/classifier/taxonomy`)
+Returns all 10 Indian handicraft categories and 50+ sub-categories for Flutter dropdowns and search filters.
+
+* **Method:** `GET`
+* **Response (200 OK):**
+```json
+{
+  "categories": [
+    "Pottery",
+    "Textiles",
+    "Woodcraft",
+    "Metalcraft",
+    "Paintings",
+    "Jewelry",
+    "Leather",
+    "Stonecraft",
+    "Home Decor",
+    "Paper & Fiber"
+  ],
+  "sub_categories": {
+    "Pottery": ["Terracotta Sculptures", "Vases & Planters", "Earthen Tableware & Cookware", "Diyas & Clay Lamps", "Glazed Ceramic Decor", "Blue Pottery Artifacts"],
+    "Woodcraft": ["Hand-Carved Sculptures", "Keepsake & Jewelry Boxes", "Lacquered Toys & Games", "Wall Panels & Jharokhas", "Tabletop Decor & Coasters", "Wood Slice & Log Crafts"]
+  },
+  "total_categories": 10,
+  "total_gi_crafts": 14
+}
+```
+
+---
+
+### 🟢 Endpoint 10: Check GI Tag Heritage (`POST /api/v1/classifier/detect-gi`)
+Verifies if a craft holds an official Indian Geographical Indication (GI Tag).
+
+* **Method:** `POST`
+* **Request Body (Form):**
+  * `craft_name`: `String` (e.g. `"Bankura Terracotta"`, `"Channapatna Toys"`, `"Banarasi Silk"`)
+
+* **Response (200 OK):**
+```json
+{
+  "is_gi_tagged": true,
+  "craft_name": "Bankura Terracotta",
+  "gi_details": {
+    "craft_name": "Bankura Terracotta",
+    "category": "Pottery",
+    "sub_category": "Terracotta Sculptures",
+    "state": "West Bengal",
+    "region": "Bishnupur & Panchmura",
+    "gi_tagged": true,
+    "hallmark": "Iconic erect-eared terracotta horse with rolled clay applique motifs"
+  }
+}
+```
+
+---
+
 ## 💻 5. Ready-to-Use Dart Code
 
 ### Step 1: Data Models (`product_model.dart`)
