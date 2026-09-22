@@ -31,6 +31,7 @@ class Product(Base):
     features: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     why_buy: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     tags: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
+    materials_breakdown: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
