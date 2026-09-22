@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from services.image_studio.pipeline import ImagePipeline
 from services.pricing_assistant.model import PricingModel
 from services.voice_cataloger.description_gen import generate_description_from_image
+from services.classifier.engine import CraftClassifier
 
 # -------------------------------------------------------------
 # DEFAULT IMAGE PATH (can also be passed as: python test_image.py <image_path>)
@@ -44,16 +45,16 @@ async def test_craft_photo(image_path: str, raw_material_cost: float = 250.0, mi
         return
 
     print("=" * 65)
-    print(f"  SHILPSETU AI TESTER: Testing photo in VS Code")
+    print(f"  SHILPSETU AI TESTER: Testing photo in VS Code (Pillars 1 to 4)")
     print(f"  Target Image: {image_path}")
-    print(f"  Artisan Inputs: Raw Material = ₹{raw_material_cost:.2f}, Min Profit Needed = ₹{min_profit:.2f}")
+    print(f"  Artisan Inputs: Raw Material = Rs. {raw_material_cost:.2f}, Min Profit = Rs. {min_profit:.2f}")
     print("=" * 65)
 
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
     # ── 1. Image Studio: Background Removal & Upscaling ──────
-    print("\n[1/3] Running AI Image Studio...")
+    print("\n[1/4] Running AI Image Studio (Pillar 1)...")
     pipeline = ImagePipeline()
     img_result = await pipeline.run(
         image_bytes=image_bytes,
@@ -65,11 +66,32 @@ async def test_craft_photo(image_path: str, raw_material_cost: float = 250.0, mi
     print(f"  - Enhanced 4x Size: {img_result['enhanced_size']} px")
     print(f"  - Sharpness Quality Score: {img_result['quality_score']}/100")
 
-    # ── 2. Vision Copywriting: Description & Why Buy ─────────
-    print("\n[2/3] Running Gemini Vision (Description & 'Why Buy')...")
+    # ── 2. Smart Product Classifier (Pillar 4) ───────────────
+    print("\n[2/4] Running Smart Product Classifier (Pillar 4)...")
+    classifier = CraftClassifier()
+    classification = classifier.classify_craft(
+        image_input=image_bytes,
+        artisan_materials=[
+            {"material": "Natural River Pebble", "percentage": 55.0},
+            {"material": "Wood Slice Backdrop", "percentage": 35.0},
+            {"material": "Clay Applique & Colors", "percentage": 10.0},
+        ],
+        artisan_hint="Hand-painted pebble cat tabletop artifact",
+    )
+    print(f"  - Primary Category: {classification.get('primary_category')}")
+    print(f"  - Sub-Category: {classification.get('sub_category')}")
+    print(f"  - Regional Craft Heritage: {classification.get('craft_heritage')}")
+    print(f"  - Origin / State: {classification.get('region_of_origin')}")
+    print(f"  - GI Tag Recognized: {'Yes (Official Indian GI)' if classification.get('gi_tagged') else 'No (Folk/Artisan Craft)'}")
+    print(f"  - Craft Technique: {classification.get('craft_technique')}")
+    print(f"  - Raw Materials Composition (Percentages):")
+    for mat in classification.get("materials_breakdown", []):
+        print(f"    * {mat['material']}: {mat['percentage']}%")
+    print(f"  - Classifier Confidence: {int(classification.get('confidence', 0.9) * 100)}%")
+
+    # ── 3. Vision Copywriting: Description & Why Buy ─────────
+    print("\n[3/4] Running Gemini Vision Copywriter (Pillar 2)...")
     desc_result = generate_description_from_image(image_bytes)
-    print(f"  - Category: {desc_result.get('category')}")
-    print(f"  - Craft Type: {desc_result.get('craft_type')}")
     print(f"  - Title (EN): {desc_result.get('title_en')}")
     print(f"  - Title (HI): {desc_result.get('title_hi')}")
     print(f"\n  - 3-4 Line Storytelling Description:")
@@ -78,15 +100,15 @@ async def test_craft_photo(image_path: str, raw_material_cost: float = 250.0, mi
     for reason in desc_result.get("why_buy", []):
         print(f"    * {reason}")
 
-    # ── 3. Dynamic Pricing Assistant: Cost-Plus & XGBoost ───
-    print("\n[3/3] Running XGBoost Pricing Assistant (with Artisan Cost-Plus Inputs)...")
+    # ── 4. Dynamic Pricing Assistant: Cost-Plus & XGBoost ───
+    print("\n[4/4] Running XGBoost Pricing Assistant (Pillar 3)...")
     pricing_model = PricingModel()
     pricing_result = pricing_model.predict_pricing(
         image_input=image_bytes,
         title=desc_result.get("title_en"),
         description=desc_result.get("description_en"),
-        category=desc_result.get("category"),
-        craft_type=desc_result.get("craft_type"),
+        category=classification.get("primary_category"),
+        craft_type=classification.get("craft_heritage"),
         raw_material_cost=raw_material_cost,
         min_profit=min_profit,
     )
@@ -108,7 +130,7 @@ async def test_craft_photo(image_path: str, raw_material_cost: float = 250.0, mi
     print(f"  - Artisan Guidance Note: \"{cost_info.get('artisan_note')}\"")
 
     print("\n" + "=" * 65)
-    print("  ALL 3 AI PIPELINES COMPLETED SUCCESSFULLY!")
+    print("  ALL 4 AI PILLARS COMPLETED SUCCESSFULLY!")
     print("=" * 65)
 
 
