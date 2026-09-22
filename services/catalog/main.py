@@ -313,6 +313,17 @@ async def create_product_with_ai(
         product_id = new_product.id
         logger.info(f"AI unified creation auto-saved product ID {product_id} with suggested price ₹{price_suggested}")
 
+        # 7. Semantic Vector Search Indexing (Pillar 5)
+        try:
+            from services.search.embedder import embedder, build_product_text
+            from services.search.index import search_index
+            product_text = build_product_text(new_product)
+            product_vec = embedder.embed(product_text)
+            search_index.add(new_product.id, product_vec, auto_save=True)
+            logger.info(f"Pillar 5: Auto-indexed product ID {product_id} into FAISS")
+        except Exception as se:
+            logger.warning(f"Pillar 5 auto-index warning for product {product_id}: {se}")
+
     elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
     return UnifiedAIProductResponse(

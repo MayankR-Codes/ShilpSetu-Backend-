@@ -52,3 +52,10 @@ xgboost>=2.0.0
 scikit-learn>=1.4.0
 joblib>=1.3.0
 
+# ─────────────────────────────────────────
+# Phase 5: Semantic Buyer Search (FAISS)
+# ─────────────────────────────────────────
+sentence-transformers>=2.7.0
+faiss-cpu>=1.8.0
+
+

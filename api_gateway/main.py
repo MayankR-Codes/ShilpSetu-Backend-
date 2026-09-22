@@ -19,6 +19,8 @@ from services.voice_cataloger.main import voice_router
 from services.catalog.main import catalog_router
 from services.pricing_assistant.main import pricing_router
 from services.classifier.main import classifier_router
+from services.search.main import search_router
+from services.search.index import search_index
 from shared.db.models import Base
 from shared.db.session import engine
 
@@ -52,6 +54,7 @@ app.include_router(voice_router, prefix="/api/v1/catalog/voice", tags=["Voice Ca
 app.include_router(catalog_router, prefix="/api/v1/products", tags=["Product Catalog"])
 app.include_router(pricing_router, prefix="/api/v1/pricing", tags=["Pricing Assistant"])
 app.include_router(classifier_router, prefix="/api/v1/classifier", tags=["Smart Product Classifier"])
+app.include_router(search_router, prefix="/api/v1/search", tags=["Semantic Search & Recommendations"])
 
 
 # ── Health check ───────────────────────────────────────────────────
@@ -71,9 +74,22 @@ async def on_startup():
         logger.info("Database tables initialized successfully")
     except Exception as e:
         logger.warning(f"Database table auto-init deferred or failed: {e}")
+
+    try:
+        loaded = search_index.load()
+        logger.info(f"Search index loaded at startup. Total items: {search_index.count()}")
+    except Exception as se:
+        logger.warning(f"Search index load deferred: {se}")
+
     logger.info("ShilpSetu API Gateway started")
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
     logger.info("ShilpSetu API Gateway shutting down")
+    try:
+        search_index.save()
+        logger.info(f"Saved search index on shutdown ({search_index.count()} items)")
+    except Exception as se:
+        logger.warning(f"Failed to save search index on shutdown: {se}")
+

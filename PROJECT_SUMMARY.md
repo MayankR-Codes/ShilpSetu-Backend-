@@ -53,12 +53,23 @@ Your Flutter developer can currently use this API to do four major things:
 
 ---
 
-## 🚀 Final Remaining Roadmap: Phase 5
+### Phase 5: Semantic Buyer Search & Recommendation Engine (Completed)
+* **Multilingual Sentence Transformers:** Generates 384-dimensional dense vectors using `paraphrase-multilingual-MiniLM-L12-v2`, enabling seamless cross-lingual search across Hindi, English, and Hinglish.
+* **FAISS Vector Index:** High-performance Cosine Similarity inner-product index (`IndexFlatIP`) stored and persisted on disk, enabling sub-millisecond similarity search.
+* **Auto-Indexing on Creation:** Products uploaded by artisans are automatically converted into rich text representations and indexed into FAISS instantly.
+* **Similar Item Recommendations:** Recommends visually and semantically related crafts ("You May Also Like") based on vector proximity.
+* **API Endpoints:** `POST /api/v1/search/query`, `GET /api/v1/search/similar/{id}`, `POST /api/v1/search/rebuild`, `GET /api/v1/search/status`.
 
-With Phases 1, 2, 3, and 4 complete, only **1 final pillar** remains:
+---
 
-### Phase 5: Semantic Buyer Search & Recommendation Engine (FAISS)
-To connect buyers to the right artisans, we will implement **Semantic Vector Search**. We will store multimodal and textual product embeddings in a **FAISS / pgvector Vector Index**. When a buyer searches conversationally for "earthy rustic table decor" or "gift for cat lover", the system mathematically matches semantic similarity, discovering artisan products even without exact keyword overlap.
+## 🏆 ALL 5 CORE AI PILLARS COMPLETED!
+The ShilpSetu AI backend now delivers end-to-end artisan empowerment:
+1. **AI Image Studio:** Automated background cutout, 4x upscaling, color correction.
+2. **AI Voice Cataloger & Vision Copywriter:** Speech-to-text, storytelling descriptions, buyer reasons.
+3. **Dynamic Pricing Assistant:** Multimodal feature extraction, XGBoost market benchmarking, guaranteed artisan cost-plus floor.
+4. **Smart Product Classifier:** 10 Indian craft categories, 50+ sub-categories, 14 GI Tag registries, material breakdown tracking.
+5. **Semantic Buyer Search:** Multilingual FAISS vector engine connecting buyers to artisan creations with natural conversational language.
+
 
 ---
 

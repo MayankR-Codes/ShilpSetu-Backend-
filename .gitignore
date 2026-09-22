@@ -66,3 +66,9 @@ dist/
 build/
 *.egg-info/
 
+# Search Index & Vector Store
+data/
+*.faiss
+*.pkl
+
+

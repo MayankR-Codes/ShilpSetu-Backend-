@@ -471,6 +471,82 @@ Verifies if a craft holds an official Indian Geographical Indication (GI Tag).
 
 ---
 
+### 🟢 Endpoint 11: Semantic Vector Buyer Search (`POST /api/v1/search/query`)
+Enables buyers to search naturally in conversational Hindi, English, or Hinglish (e.g., *"earthy rustic table decor"*, *"gift for cat lover"*, *"मिट्टी के बर्तन"*). Matches products by semantic meaning rather than strict keywords.
+
+* **Method:** `POST`
+* **Content-Type:** `application/json`
+* **Request Body:**
+```json
+{
+  "query": "earthy rustic table decor",
+  "top_k": 10,
+  "category": "Home Decor",
+  "min_price": 200.0,
+  "max_price": 1500.0
+}
+```
+* **Response (200 OK):**
+```json
+{
+  "query": "earthy rustic table decor",
+  "total": 1,
+  "results": [
+    {
+      "product_id": 42,
+      "title_en": "Rustic Pebble Art Trio Cats",
+      "title_hi": "हस्तनिर्मित कंकड़ बिल्ली कला",
+      "category": "Home Decor",
+      "sub_category": "Wood Slice & Log Crafts",
+      "craft_type": "Pebble Art & Rustic Woodcraft",
+      "price_suggested": 650.0,
+      "original_image_url": "...",
+      "enhanced_image_url": "http://localhost:8000/uploads/enhanced_cat.png",
+      "score": 0.892
+    }
+  ]
+}
+```
+
+---
+
+### 🟢 Endpoint 12: Find Similar Products (`GET /api/v1/search/similar/{product_id}`)
+Recommends products similar to the currently viewed item using dense vector embeddings. Perfect for "You May Also Like" carousels.
+
+* **Method:** `GET`
+* **Query Params:**
+  * `top_k`: Number of recommendations to return (default: 5, range: 1–20)
+* **Response (200 OK):**
+```json
+{
+  "query": "Similar to product #42 (Rustic Pebble Art Trio Cats)",
+  "total": 3,
+  "results": [
+    {
+      "product_id": 19,
+      "title_en": "Handcrafted Pine Wood Log Coasters",
+      "category": "Woodcraft",
+      "sub_category": "Tabletop Decor & Coasters",
+      "price_suggested": 420.0,
+      "score": 0.841,
+      "enhanced_image_url": "..."
+    }
+  ]
+}
+```
+
+---
+
+### 🟢 Endpoint 13: Rebuild Vector Index & Status (`POST /api/v1/search/rebuild` & `GET /api/v1/search/status`)
+Used by artisans / admin to rebuild the FAISS vector index from all products in the database, or check current index size.
+
+* **Rebuild:** `POST /api/v1/search/rebuild`
+  * Response: `{"status": "success", "total_indexed": 84, "message": "Successfully indexed 84 products into FAISS"}`
+* **Status:** `GET /api/v1/search/status`
+  * Response: `{"status": "ready", "total_indexed": 84, "dimension": 384, "index_dir": "..."}`
+
+---
+
 ## 💻 5. Ready-to-Use Dart Code
 
 ### Step 1: Data Models (`product_model.dart`)
