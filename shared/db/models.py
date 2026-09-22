@@ -26,6 +26,8 @@ class Product(Base):
     price_suggested: Mapped[float] = mapped_column(Float, nullable=True)
     price_min: Mapped[float] = mapped_column(Float, nullable=True)
     price_max: Mapped[float] = mapped_column(Float, nullable=True)
+    raw_material_cost: Mapped[float] = mapped_column(Float, nullable=True)
+    min_profit: Mapped[float] = mapped_column(Float, nullable=True)
     features: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     why_buy: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     tags: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
