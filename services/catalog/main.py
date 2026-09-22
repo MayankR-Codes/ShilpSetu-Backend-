@@ -17,7 +17,11 @@ from shared.db.models import Product
 from services.image_studio.pipeline import ImagePipeline
 from services.voice_cataloger.asr import transcribe_audio
 from services.voice_cataloger.translate import translate_catalog_text
-from services.voice_cataloger.description_gen import generate_catalog_listing
+from services.voice_cataloger.description_gen import (
+    generate_catalog_listing,
+    generate_description_from_image,
+    generate_fused_catalog_listing,
+)
 from services.voice_cataloger.seo_injector import inject_seo_tags
 from services.pricing_assistant.model import PricingModel
 from services.classifier.engine import CraftClassifier
@@ -96,8 +100,8 @@ class UnifiedAIProductResponse(BaseModel):
     why_buy: List[str] = []
     tags: List[str]
     materials_breakdown: Optional[List[dict]] = []
-    enhanced_image_url: str
-    quality_score: float
+    enhanced_image_url: Optional[str] = None
+    quality_score: Optional[float] = 0.0
     detected_language: str
     raw_transcript: str
     processing_time_ms: int
@@ -185,8 +189,8 @@ async def get_product_by_id(product_id: int, db: AsyncSession = Depends(get_db))
 
 @catalog_router.post("/create-ai", response_model=UnifiedAIProductResponse)
 async def create_product_with_ai(
-    image: UploadFile = File(..., description="Raw photo of artisan craft (JPEG/PNG/WebP)"),
-    audio: UploadFile = File(..., description="Voice description of craft (MP3/WAV/M4A)"),
+    image: Optional[UploadFile] = File(None, description="Raw photo of artisan craft (JPEG/PNG/WebP)"),
+    audio: Optional[UploadFile] = File(None, description="Voice description of craft (MP3/WAV/M4A)"),
     artisan_id: str = Form(..., description="Unique ID of the artisan"),
     category: Optional[str] = Form(None, description="Optional craft category (e.g. 'Textiles', 'Pottery')"),
     language_hint: Optional[str] = Form(None, description="Optional ISO code (e.g. 'hi')"),
@@ -199,27 +203,35 @@ async def create_product_with_ai(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Unified Multi-Modal Pipeline:
-    Artisan uploads craft photo + audio note in ONE call.
+    Unified Multi-Modal Pipeline (Flexible Tri-Mode):
+    Artisans can provide Photo Only, Voice Only, or Both.
 
-    1. Enhances image (background removal, upscaling, color correction).
-    2. Transcribes voice note (Whisper), translates to English/Hindi, and structures with Gemini AI.
-    3. Injects SEO tags.
-    4. Smart Product Classifier: Auto-classifies category, sub-category, GI tag status, and materials breakdown.
-    5. Predicts fair market pricing range (XGBoost Pricing Assistant with cost-plus floor protection).
-    6. Optionally saves the complete listing to the PostgreSQL catalog immediately.
+    - Mode 1: Multimodal Fusion (Photo + Voice) - Fuses visual craftsmanship with the artisan's personal spoken story.
+    - Mode 2: Photo-Only - Autonomous vision cataloging for quiet artisans.
+    - Mode 3: Voice-Only - Fast vocal catalog draft when photo is not yet available.
     """
-    # 1. Validation
-    if image.content_type not in ("image/jpeg", "image/png", "image/webp"):
-        raise HTTPException(status_code=415, detail="Unsupported image format. Upload JPEG, PNG, or WebP.")
-
-    if not audio.content_type.startswith("audio/") and audio.content_type not in [
-        "application/octet-stream",
-        "video/mp4",
-    ]:
-        raise HTTPException(status_code=415, detail="Unsupported audio format. Upload an audio file.")
-
     start_time = time.monotonic()
+
+    # Pre-flight validation: must provide at least one input
+    has_image = image is not None and bool(image.filename)
+    has_audio = audio is not None and bool(audio.filename)
+
+    if not has_image and not has_audio:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide at least a product photo ('image'), a voice note ('audio'), or both.",
+        )
+
+    if has_image:
+        if image.content_type not in ("image/jpeg", "image/png", "image/webp"):
+            raise HTTPException(status_code=415, detail="Unsupported image format. Upload JPEG, PNG, or WebP.")
+
+    if has_audio:
+        if not audio.content_type.startswith("audio/") and audio.content_type not in [
+            "application/octet-stream",
+            "video/mp4",
+        ]:
+            raise HTTPException(status_code=415, detail="Unsupported audio format. Upload an audio file.")
 
     # Parse optional artisan materials JSON
     parsed_materials = None
@@ -231,19 +243,45 @@ async def create_product_with_ai(
         except Exception:
             logger.warning(f"Could not parse materials_breakdown JSON in create-ai: {materials_breakdown}")
 
-    # 2. Image Studio Enhancement
-    image_bytes = await image.read()
-    image_result = await image_pipeline.run(
-        image_bytes=image_bytes,
-        original_filename=image.filename,
-        output_format="webp",
-    )
+    # 1. Image Studio Enhancement (if photo provided)
+    image_bytes = None
+    image_url = None
+    quality_score = 0.0
+    if has_image:
+        image_bytes = await image.read()
+        image_result = await image_pipeline.run(
+            image_bytes=image_bytes,
+            original_filename=image.filename,
+            output_format="webp",
+        )
+        image_url = image_result["url"]
+        quality_score = image_result["quality_score"]
 
-    # 3. Voice Cataloger Processing
-    audio_bytes = await audio.read()
-    asr_result = transcribe_audio(audio_bytes, language_hint)
-    translations = translate_catalog_text(asr_result["text"])
-    catalog_listing = generate_catalog_listing(translations["english"])
+    # 2. Voice Cataloger Processing (if voice note provided)
+    detected_lang = "none"
+    raw_transcript = ""
+    english_transcript = ""
+    if has_audio:
+        audio_bytes = await audio.read()
+        asr_result = transcribe_audio(audio_bytes, language_hint)
+        detected_lang = asr_result.get("language") or "unknown"
+        raw_transcript = asr_result.get("text", "")
+        translations = translate_catalog_text(raw_transcript)
+        english_transcript = translations.get("english", "")
+
+    # 3. AI Copywriting Generation (Flexible Tri-Mode)
+    if has_image and has_audio:
+        logger.info("Executing Mode 1: Multimodal Voice + Vision Fusion")
+        catalog_listing = generate_fused_catalog_listing(image_bytes, english_transcript)
+    elif has_image:
+        logger.info("Executing Mode 2: Photo-Only Visual Cataloging")
+        detected_lang = "visual"
+        raw_transcript = "Visual AI cataloging (no voice note provided)"
+        catalog_listing = generate_description_from_image(image_bytes)
+    else:
+        logger.info("Executing Mode 3: Voice-Only Cataloging")
+        catalog_listing = generate_catalog_listing(english_transcript)
+
     final_listing = inject_seo_tags(catalog_listing)
 
     # 4. Extract fields
@@ -256,7 +294,6 @@ async def create_product_with_ai(
     seo_tags = final_listing.get("seo_tags", [])
 
     # 5. Smart Product Classifier (Pillar 4)
-    # Automatically infer category, sub-category, GI heritage, and materials if not supplied
     classification = classifier_engine.classify_craft(
         image_input=image_bytes,
         artisan_materials=parsed_materials,
@@ -285,6 +322,7 @@ async def create_product_with_ai(
     price_max = price_range["max"]
     cost_analysis = pricing_pred.get("cost_analysis")
 
+    # 7. Database Persistence & FAISS Vector Indexing
     product_id = None
     if auto_save:
         new_product = Product(
@@ -296,7 +334,7 @@ async def create_product_with_ai(
             category=final_category,
             sub_category=sub_category,
             craft_type=craft_type,
-            enhanced_image_url=image_result["url"],
+            enhanced_image_url=image_url,
             price_suggested=price_suggested,
             price_min=price_min,
             price_max=price_max,
@@ -311,9 +349,9 @@ async def create_product_with_ai(
         await db.commit()
         await db.refresh(new_product)
         product_id = new_product.id
-        logger.info(f"AI unified creation auto-saved product ID {product_id} with suggested price ₹{price_suggested}")
+        logger.info(f"AI unified creation auto-saved product ID {product_id} with suggested price Rs. {price_suggested}")
 
-        # 7. Semantic Vector Search Indexing (Pillar 5)
+        # Semantic Vector Search Indexing (Pillar 5)
         try:
             from services.search.embedder import embedder, build_product_text
             from services.search.index import search_index
@@ -342,10 +380,10 @@ async def create_product_with_ai(
         why_buy=why_buy,
         tags=seo_tags,
         materials_breakdown=final_materials,
-        enhanced_image_url=image_result["url"],
-        quality_score=image_result["quality_score"],
-        detected_language=asr_result.get("language") or "unknown",
-        raw_transcript=asr_result.get("text", ""),
+        enhanced_image_url=image_url,
+        quality_score=quality_score,
+        detected_language=detected_lang,
+        raw_transcript=raw_transcript,
         processing_time_ms=elapsed_ms,
         is_saved=auto_save,
         price_suggested=price_suggested,
