@@ -37,7 +37,7 @@ from services.voice_cataloger.description_gen import generate_description_from_i
 DEFAULT_IMAGE_PATH = r"C:\Users\KIIT\.gemini\antigravity\brain\427f0d68-e958-482c-83de-b890832a2c1e\.user_uploaded\media_1789996819687.jpg"
 
 
-async def test_craft_photo(image_path: str):
+async def test_craft_photo(image_path: str, raw_material_cost: float = 250.0, min_profit: float = 200.0):
     if not os.path.exists(image_path):
         print(f"[Error] Image not found at: {image_path}")
         print("Please provide a valid image path. Example: python test_image.py path/to/craft.jpg")
@@ -46,6 +46,7 @@ async def test_craft_photo(image_path: str):
     print("=" * 65)
     print(f"  SHILPSETU AI TESTER: Testing photo in VS Code")
     print(f"  Target Image: {image_path}")
+    print(f"  Artisan Inputs: Raw Material = ₹{raw_material_cost:.2f}, Min Profit Needed = ₹{min_profit:.2f}")
     print("=" * 65)
 
     with open(image_path, "rb") as f:
@@ -77,8 +78,8 @@ async def test_craft_photo(image_path: str):
     for reason in desc_result.get("why_buy", []):
         print(f"    * {reason}")
 
-    # ── 3. Dynamic Pricing Assistant: XGBoost Model ──────────
-    print("\n[3/3] Running XGBoost Pricing Assistant...")
+    # ── 3. Dynamic Pricing Assistant: Cost-Plus & XGBoost ───
+    print("\n[3/3] Running XGBoost Pricing Assistant (with Artisan Cost-Plus Inputs)...")
     pricing_model = PricingModel()
     pricing_result = pricing_model.predict_pricing(
         image_input=image_bytes,
@@ -86,12 +87,25 @@ async def test_craft_photo(image_path: str):
         description=desc_result.get("description_en"),
         category=desc_result.get("category"),
         craft_type=desc_result.get("craft_type"),
+        raw_material_cost=raw_material_cost,
+        min_profit=min_profit,
     )
     pr = pricing_result["price_range"]
-    print(f"  - Suggested Price: Rs. {pr['suggested']}")
-    print(f"  - Recommended Range: Rs. {pr['min']} - Rs. {pr['max']}")
+    cost_info = pricing_result.get("cost_analysis", {})
+
+    print(f"  - Artisan Raw Materials Cost: Rs. {cost_info.get('raw_material_cost', raw_material_cost):.2f}")
+    print(f"  - Artisan Min Profit Desired: Rs. {cost_info.get('min_profit_desired', min_profit):.2f}")
+    print(f"  - Cost Floor (Cost + Profit): Rs. {cost_info.get('cost_floor', raw_material_cost + min_profit):.2f}")
+    print(f"  -------------------------------------------------------------")
+    print(f"  - Suggested Selling Price: Rs. {pr['suggested']:.2f}")
+    print(f"  - Recommended Range: Rs. {pr['min']:.2f} - Rs. {pr['max']:.2f} (Floor Protected >= Rs. {cost_info.get('cost_floor'):.2f})")
+    print(f"  - Projected Profit: Rs. {cost_info.get('projected_profit', 0):.2f} ({cost_info.get('profit_margin_pct', 0):.1f}% margin)")
+    if cost_info.get("surplus_above_min_profit", 0) > 0:
+        print(f"  - Extra Profit Surplus: +Rs. {cost_info.get('surplus_above_min_profit'):.2f} ABOVE artisan target!")
+    print(f"  - Pricing Strategy: {pricing_result['market_insights']['pricing_strategy']}")
     print(f"  - Confidence: {int(pricing_result['confidence'] * 100)}%")
     print(f"  - Craft Tier: {pricing_result['market_insights']['craft_tier']}")
+    print(f"  - Artisan Guidance Note: \"{cost_info.get('artisan_note')}\"")
 
     print("\n" + "=" * 65)
     print("  ALL 3 AI PIPELINES COMPLETED SUCCESSFULLY!")
@@ -100,4 +114,6 @@ async def test_craft_photo(image_path: str):
 
 if __name__ == "__main__":
     target_img = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_IMAGE_PATH
-    asyncio.run(test_craft_photo(target_img))
+    mat_cost = float(sys.argv[2]) if len(sys.argv) > 2 else 250.0
+    profit = float(sys.argv[3]) if len(sys.argv) > 3 else 200.0
+    asyncio.run(test_craft_photo(target_img, raw_material_cost=mat_cost, min_profit=profit))
