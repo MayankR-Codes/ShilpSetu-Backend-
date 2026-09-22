@@ -79,18 +79,22 @@ flowchart TD
 ## 📡 4. Complete API Contracts
 
 ### 🟢 Endpoint 1: All-in-One Multi-Modal AI (`POST /api/v1/products/create-ai`)
-Upload craft photo and audio in **one single request**.
+Upload craft photo and/or audio in **one single request**. Supports **Flexible Tri-Mode Input**:
+* **Mode 1 (Multimodal Fusion):** Send both `image` + `audio` $\to$ AI fuses visual craft motifs with the artisan's personal spoken story.
+* **Mode 2 (Photo-Only):** Send only `image` $\to$ AI visually inspects the craft and writes the entire catalog autonomously.
+* **Mode 3 (Voice-Only):** Send only `audio` $\to$ AI creates a catalog listing draft purely from the spoken voice note.
 
 * **Method:** `POST`
 * **Content-Type:** `multipart/form-data`
 * **Request Body:**
-  * `image`: Image file (`.jpg`, `.png`, `.webp`)
-  * `audio`: Audio voice note file (`.mp3`, `.wav`, `.m4a`)
+  * `image`: Optional Image file (`.jpg`, `.png`, `.webp`) — required if `audio` is absent
+  * `audio`: Optional Audio voice note file (`.mp3`, `.wav`, `.m4a`) — required if `image` is absent
   * `artisan_id`: `String` (e.g. `"artisan_101"`)
   * `category`: Optional `String` (e.g. `"Pottery"`, `"Textiles"`, `"Woodcraft"`, `"Home Decor"`)
   * `language_hint`: Optional `String` (e.g. `"hi"` for Hindi, `"bn"` for Bengali)
   * `raw_material_cost`: Optional `double` (cost of raw materials invested in INR)
   * `min_profit`: Optional `double` (minimum desired profit needed by artisan in INR)
+  * `materials_breakdown`: Optional JSON `String` (e.g. `'[{"material":"Clay","percentage":85}]'`)
   * `auto_save`: `bool` (default `true` to immediately save to database)
 
 * **Response (200 OK):**
