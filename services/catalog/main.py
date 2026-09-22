@@ -43,6 +43,8 @@ class ProductCreate(BaseModel):
     price_suggested: Optional[float] = None
     price_min: Optional[float] = None
     price_max: Optional[float] = None
+    raw_material_cost: Optional[float] = None
+    min_profit: Optional[float] = None
     features: Optional[List[str]] = []
     why_buy: Optional[List[str]] = []
     tags: Optional[List[str]] = []
@@ -63,6 +65,8 @@ class ProductResponse(BaseModel):
     price_suggested: Optional[float] = None
     price_min: Optional[float] = None
     price_max: Optional[float] = None
+    raw_material_cost: Optional[float] = None
+    min_profit: Optional[float] = None
     features: Optional[List[str]] = []
     why_buy: Optional[List[str]] = []
     tags: Optional[List[str]] = []
@@ -91,6 +95,9 @@ class UnifiedAIProductResponse(BaseModel):
     price_suggested: Optional[float] = None
     price_min: Optional[float] = None
     price_max: Optional[float] = None
+    raw_material_cost: Optional[float] = None
+    min_profit: Optional[float] = None
+    cost_analysis: Optional[dict] = None
 
 
 # ── Catalog Endpoints ──────────────────────────────────────────────
@@ -116,6 +123,8 @@ async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_
         price_suggested=product.price_suggested,
         price_min=product.price_min,
         price_max=product.price_max,
+        raw_material_cost=product.raw_material_cost,
+        min_profit=product.min_profit,
         features=product.features or [],
         why_buy=product.why_buy or [],
         tags=product.tags or [],
@@ -170,6 +179,8 @@ async def create_product_with_ai(
     artisan_id: str = Form(..., description="Unique ID of the artisan"),
     category: Optional[str] = Form(None, description="Optional craft category (e.g. 'Textiles', 'Pottery')"),
     language_hint: Optional[str] = Form(None, description="Optional ISO code (e.g. 'hi')"),
+    raw_material_cost: Optional[float] = Form(None, description="Cost of raw materials invested by artisan in INR"),
+    min_profit: Optional[float] = Form(None, description="Minimum desired profit needed by artisan in INR"),
     auto_save: bool = Form(True, description="Whether to automatically commit the listing to the database"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -180,7 +191,7 @@ async def create_product_with_ai(
     1. Enhances image (background removal, upscaling, color correction).
     2. Transcribes voice note (Whisper), translates to English/Hindi, and structures with Gemini AI.
     3. Injects SEO tags.
-    4. Predicts fair market pricing range (XGBoost Pricing Assistant).
+    4. Predicts fair market pricing range (XGBoost Pricing Assistant with cost-plus floor protection).
     5. Optionally saves the complete listing to the PostgreSQL catalog immediately.
     """
     # 1. Validation
@@ -225,11 +236,14 @@ async def create_product_with_ai(
         title=title_en,
         description=description_en,
         category=category,
+        raw_material_cost=raw_material_cost,
+        min_profit=min_profit,
     )
     price_range = pricing_pred["price_range"]
     price_min = price_range["min"]
     price_suggested = price_range["suggested"]
     price_max = price_range["max"]
+    cost_analysis = pricing_pred.get("cost_analysis")
 
     product_id = None
     if auto_save:
@@ -244,6 +258,8 @@ async def create_product_with_ai(
             price_suggested=price_suggested,
             price_min=price_min,
             price_max=price_max,
+            raw_material_cost=raw_material_cost,
+            min_profit=min_profit,
             features=features,
             why_buy=why_buy,
             tags=seo_tags,
@@ -275,4 +291,7 @@ async def create_product_with_ai(
         price_suggested=price_suggested,
         price_min=price_min,
         price_max=price_max,
+        raw_material_cost=raw_material_cost,
+        min_profit=min_profit,
+        cost_analysis=cost_analysis,
     )
