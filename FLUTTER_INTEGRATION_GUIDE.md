@@ -85,9 +85,12 @@ Upload craft photo and audio in **one single request**.
 * **Content-Type:** `multipart/form-data`
 * **Request Body:**
   * `image`: Image file (`.jpg`, `.png`, `.webp`)
-  * `audio`: Audio file (`.m4a`, `.mp3`, `.wav`)
+  * `audio`: Audio voice note file (`.mp3`, `.wav`, `.m4a`)
   * `artisan_id`: `String` (e.g. `"artisan_101"`)
+  * `category`: Optional `String` (e.g. `"Pottery"`, `"Textiles"`, `"Woodcraft"`, `"Home Decor"`)
   * `language_hint`: Optional `String` (e.g. `"hi"` for Hindi, `"bn"` for Bengali)
+  * `raw_material_cost`: Optional `double` (cost of raw materials invested in INR)
+  * `min_profit`: Optional `double` (minimum desired profit needed by artisan in INR)
   * `auto_save`: `bool` (default `true` to immediately save to database)
 
 * **Response (200 OK):**
@@ -104,6 +107,11 @@ Upload craft photo and audio in **one single request**.
     "Hand-painted floral motifs",
     "Eco-friendly and durable"
   ],
+  "why_buy": [
+    "Authentic hand-molded clay craft by master potters",
+    "Eco-friendly natural finish",
+    "Unique rustic home decor piece"
+  ],
   "tags": ["terracotta", "handmade", "pottery", "vocal for local", "shilpsetu"],
   "enhanced_image_url": "/uploads/products/d54a2b91.webp",
   "quality_score": 88.4,
@@ -111,9 +119,21 @@ Upload craft photo and audio in **one single request**.
   "raw_transcript": "yeh mitti ka phool daan hai jo maine banaya hai",
   "processing_time_ms": 2340,
   "is_saved": true,
+  "raw_material_cost": 250.0,
+  "min_profit": 200.0,
   "price_suggested": 650.0,
-  "price_min": 487.5,
-  "price_max": 877.5
+  "price_min": 450.0,
+  "price_max": 877.5,
+  "cost_analysis": {
+    "raw_material_cost": 250.0,
+    "min_profit_desired": 200.0,
+    "cost_floor": 450.0,
+    "suggested_price": 650.0,
+    "projected_profit": 400.0,
+    "profit_margin_pct": 61.54,
+    "surplus_above_min_profit": 200.0,
+    "artisan_note": "Market demand for this craft allows a price of Rs. 650.00. You earn Rs. 400.00 profit (Rs. 200.00 extra surplus above your Rs. 200.00 target)."
+  }
 }
 ```
 
@@ -286,6 +306,7 @@ Used for the buyer's home screen or artisan's listings with pagination.
 
 ### 🟢 Endpoint 6: Dynamic Pricing Assistant (`POST /api/v1/pricing/suggest`)
 Predict fair, market-competitive pricing for a handicraft using XGBoost machine learning & Indian handicraft benchmarks.
+Artisans can optionally provide their raw material investment and required minimum profit to guarantee cost-plus floor protection.
 
 * **Method:** `POST`
 * **Content-Type:** `application/json`
@@ -296,7 +317,9 @@ Predict fair, market-competitive pricing for a handicraft using XGBoost machine 
   "description": "Handcrafted with pure gold zari and intricate royal floral motifs.",
   "category": "Textiles",
   "craft_type": "Banarasi",
-  "region": "Uttar Pradesh"
+  "region": "Uttar Pradesh",
+  "raw_material_cost": 2200.0,
+  "min_profit": 1500.0
 }
 ```
 
@@ -304,18 +327,28 @@ Predict fair, market-competitive pricing for a handicraft using XGBoost machine 
 ```json
 {
   "price_range": {
-    "min": 4125.0,
+    "min": 4400.0,
     "suggested": 5500.0,
     "max": 7425.0
   },
   "currency": "INR",
   "confidence": 0.88,
+  "cost_analysis": {
+    "raw_material_cost": 2200.0,
+    "min_profit_desired": 1500.0,
+    "cost_floor": 3700.0,
+    "suggested_price": 5500.0,
+    "projected_profit": 3300.0,
+    "profit_margin_pct": 60.0,
+    "surplus_above_min_profit": 1800.0,
+    "artisan_note": "Market demand for this craft allows a price of Rs. 5,500.00. You earn Rs. 3,300.00 profit (Rs. 1,800.00 extra surplus above your Rs. 1,500.00 target)."
+  },
   "market_insights": {
     "category": "Textiles",
     "craft_tier": "Master / Heritage Craft",
     "avg_category_price": 2400.0,
     "competitor_count": 230,
-    "pricing_strategy": "Fair Trade Artisan Benchmark",
+    "pricing_strategy": "Market Value Premium",
     "price_trend": "High Demand (Vocal for Local)"
   }
 }
