@@ -177,3 +177,65 @@ def generate_description_from_image(image_bytes: bytes, craft_hint: Optional[str
             status_code=500,
             detail=f"Failed to generate craft description from image: {str(e)}",
         )
+
+
+def generate_fused_catalog_listing(image_bytes: bytes, english_transcript: str) -> dict:
+    """
+    Multimodal Voice + Vision Fusion Generator:
+    Fuses the artisan's spoken story and personal context with visual inspection
+    of the actual craft photo via Gemini Vision.
+    """
+    model = _get_model()
+
+    try:
+        pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except Exception as e:
+        logger.warning(f"Could not open image for multimodal fusion, falling back to voice: {e}")
+        return generate_catalog_listing(english_transcript)
+
+    prompt = f"""
+    You are an expert e-commerce copywriter and handicraft curator for ShilpSetu, an Indian artisan marketplace.
+    You are given BOTH a photograph of an authentic Indian handcrafted product AND the artisan's personal spoken voice note.
+
+    Artisan's Spoken Voice Note (Translated to English):
+    "{english_transcript}"
+
+    INSTRUCTIONS:
+    1. Synergize both inputs: Combine what you visually observe in the photo (colors, textures, motifs, craftsmanship details) with the artisan's spoken story (materials used, days taken, traditional technique).
+    2. "category": Primary category ("Textiles", "Pottery", "Woodcraft", "Metalcraft", "Jewelry", "Paintings", "Leather", or "Home Decor").
+    3. "craft_type": Specific regional craft name (e.g. "Bankura Terracotta", "Banarasi Silk", "Channapatna Woodcraft", "Jaipur Blue Pottery", "Moradabad Brass", etc.).
+    4. "description_en" & "description_hi": Exactly 3 to 4 captivating lines of storytelling description that honors the artisan's personal work while detailing the visual beauty of the piece.
+    5. "why_buy": 3 to 4 persuasive bullet points explaining why a buyer will purchase this product upon seeing it.
+    6. "features": 4 specific visible craftsmanship features.
+    7. "seo_tags": 8-10 trending e-commerce tags.
+    8. Return ONLY a valid JSON object without markdown fences or commentary.
+
+    Required JSON Schema:
+    {{
+        "category": "Pottery",
+        "craft_type": "Terracotta",
+        "title_en": "Catchy Product Title (max 80 chars)",
+        "title_hi": "उत्पाद का आकर्षक शीर्षक",
+        "description_en": "Compelling 3-4 line e-commerce storytelling description...",
+        "description_hi": "3-4 पंक्तियों का सुंदर विवरण...",
+        "why_buy": [
+            "Unique handmade detail reflecting the artisan's dedicated craft",
+            "100% eco-friendly and authentic natural materials",
+            "Statement heritage decor that enriches any living space"
+        ],
+        "features": [
+            "Handmade using traditional techniques",
+            "Authentic artisanal finish",
+            "Premium durable construction"
+        ],
+        "seo_tags": ["handmade", "artisan", "authentic craft", "vocal for local"]
+    }}
+    """
+
+    try:
+        response = model.generate_content([prompt, pil_image])
+        return _parse_json_response(response.text)
+    except Exception as e:
+        logger.warning(f"Multimodal Gemini vision generation failed ({e}). Falling back to voice transcript listing.")
+        return generate_catalog_listing(english_transcript)
+
