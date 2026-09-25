@@ -86,7 +86,17 @@ class CraftClassifier:
         else:
             pil_image = Image.new("RGB", (224, 224), color="orange")
 
-        # 2. Try Gemini Multimodal Vision Classifier
+        # 2. If artisan_hint is already provided (e.g. from create-ai copywriting),
+        # use the fast local heuristic taxonomy & GI registry engine to save tokens and avoid 429 quota exhaustion.
+        if artisan_hint and len(artisan_hint.strip()) > 5:
+            logger.info("Classifying craft using local Indian GI Registry & Taxonomy (0 tokens burned)")
+            return self._classify_with_heuristics(
+                pil_image=pil_image,
+                artisan_materials=artisan_materials,
+                artisan_hint=artisan_hint,
+            )
+
+        # 3. Otherwise try Gemini Multimodal Vision Classifier for standalone image classification
         model = self._get_gemini_model()
         if model is not None:
             try:
@@ -99,7 +109,7 @@ class CraftClassifier:
             except Exception as e:
                 logger.warning(f"Gemini vision classifier failed, falling back to local heuristic: {e}")
 
-        # 3. Fallback to Local Visual Heuristic Engine
+        # 4. Fallback to Local Visual Heuristic Engine
         return self._classify_with_heuristics(
             pil_image=pil_image,
             artisan_materials=artisan_materials,
@@ -205,24 +215,27 @@ class CraftClassifier:
         if any(w in hint_lower for w in ["clay", "terracotta", "pottery", "mitti", "pot"]):
             matched_cat = "Pottery"
             matched_sub = "Terracotta Sculptures"
-            matched_heritage = "Terracotta Craft"
+            matched_heritage = "Bankura Terracotta"
             gi_tagged = True
-            region = "West Bengal / Uttar Pradesh"
+            region = "West Bengal (Bishnupur & Bankura)"
         elif any(w in hint_lower for w in ["silk", "saree", "handloom", "zari", "textile", "cotton"]):
             matched_cat = "Textiles"
             matched_sub = "Sarees & Drapes"
-            matched_heritage = "Indian Handloom"
-            region = "Varanasi / Kanchipuram"
+            matched_heritage = "Banarasi Brocade & Silk"
+            gi_tagged = True
+            region = "Varanasi, Uttar Pradesh"
         elif any(w in hint_lower for w in ["wood", "wooden", "teak", "channapatna", "timber"]):
             matched_cat = "Woodcraft"
             matched_sub = "Hand-Carved Sculptures"
-            matched_heritage = "Traditional Woodcraft"
-            region = "Saharanpur / Karnataka"
+            matched_heritage = "Channapatna Toys & Lacquerware"
+            gi_tagged = True
+            region = "Ramanagara, Karnataka"
         elif any(w in hint_lower for w in ["brass", "metal", "bronze", "copper", "peetal", "dhokra"]):
             matched_cat = "Metalcraft"
             matched_sub = "Brass Pooja & Ritual Items"
-            matched_heritage = "Moradabad Brass / Dhokra"
-            region = "Uttar Pradesh / Bastar"
+            matched_heritage = "Moradabad Brassware / Bastar Dhokra"
+            gi_tagged = True
+            region = "Moradabad (UP) / Bastar (Chhattisgarh)"
         elif any(w in hint_lower for w in ["pebble", "stone", "rock"]):
             matched_cat = "Home Decor"
             matched_sub = "Wood Slice & Log Crafts"
