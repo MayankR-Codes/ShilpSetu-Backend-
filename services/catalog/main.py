@@ -6,8 +6,9 @@ Integrates AI Image Studio, Voice Cataloger, and database persistence into a uni
 import time
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query, status
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query, status, Request
 from pydantic import BaseModel, ConfigDict
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -98,9 +99,13 @@ class UnifiedAIProductResponse(BaseModel):
     gi_tagged: Optional[bool] = False
     features: List[str]
     why_buy: List[str] = []
-    tags: List[str]
+    tags: List[str] = []
     materials_breakdown: Optional[List[dict]] = []
     enhanced_image_url: Optional[str] = None
+    enhanced_url: Optional[str] = None
+    image_url: Optional[str] = None
+    image: Optional[str] = None
+    url: Optional[str] = None
     quality_score: Optional[float] = 0.0
     detected_language: str
     raw_transcript: str
@@ -112,17 +117,37 @@ class UnifiedAIProductResponse(BaseModel):
     raw_material_cost: Optional[float] = None
     min_profit: Optional[float] = None
     cost_analysis: Optional[dict] = None
+    generated_by_model: Optional[str] = None
+
+
+def get_public_base_url(request: Request) -> str:
+    """Constructs a clean HTTPS URL reachable from mobile apps behind ngrok or proxies."""
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme or "http"
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or str(request.base_url.netloc)
+    if "ngrok" in host.lower() or proto == "https":
+        proto = "https"
+    return f"{proto}://{host}".rstrip("/")
 
 
 # ── Catalog Endpoints ──────────────────────────────────────────────
 
 @catalog_router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 @catalog_router.post("/save", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_db)):
+async def create_product(request: Request, product: ProductCreate, db: AsyncSession = Depends(get_db)):
     """
     Save a finalized product listing to the PostgreSQL catalog.
     Supports both POST /api/v1/products and POST /api/v1/products/save (backwards compatible).
     """
+    enhanced_img = product.enhanced_image_url
+    if enhanced_img and ("data/user/" in enhanced_img or "craft_" in enhanced_img or enhanced_img.startswith("/data") or enhanced_img.startswith("file://")):
+        import glob
+        files = sorted(glob.glob("uploads/products/*.webp"), key=os.path.getmtime, reverse=True)
+        if files:
+            latest_rel = "/" + files[0].replace("\\", "/")
+            base_url = get_public_base_url(request)
+            enhanced_img = f"{base_url}{latest_rel}"
+            logger.info(f"Auto-healed local mobile path '{product.enhanced_image_url}' -> '{enhanced_img}'")
+
     new_product = Product(
         artisan_id=product.artisan_id,
         title_en=product.title_en,
@@ -133,7 +158,7 @@ async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_
         sub_category=product.sub_category,
         craft_type=product.craft_type,
         original_image_url=product.original_image_url,
-        enhanced_image_url=product.enhanced_image_url,
+        enhanced_image_url=enhanced_img,
         price_suggested=product.price_suggested,
         price_min=product.price_min,
         price_max=product.price_max,
@@ -154,6 +179,7 @@ async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_
 @catalog_router.get("", response_model=List[ProductResponse])
 @catalog_router.get("/feed", response_model=List[ProductResponse])
 async def get_catalog_feed(
+    request: Request,
     limit: int = Query(20, ge=1, le=100, description="Number of items to fetch"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     db: AsyncSession = Depends(get_db),
@@ -170,11 +196,25 @@ async def get_catalog_feed(
     )
     result = await db.execute(query)
     products = result.scalars().all()
+    base_url = get_public_base_url(request)
+    for p in products:
+        if p.enhanced_image_url and ("data/user/" in p.enhanced_image_url or "craft_" in p.enhanced_image_url):
+            import glob
+            files = sorted(glob.glob("uploads/products/*.webp"), key=os.path.getmtime, reverse=True)
+            if files:
+                rel = "/" + files[0].replace("\\", "/")
+                p.enhanced_image_url = f"{base_url}{rel}"
+        elif p.enhanced_image_url and p.enhanced_image_url.startswith("/"):
+            p.enhanced_image_url = f"{base_url}{p.enhanced_image_url}"
     return products
 
 
 @catalog_router.get("/{product_id}", response_model=ProductResponse)
-async def get_product_by_id(product_id: int, db: AsyncSession = Depends(get_db)):
+async def get_product_by_id(
+    request: Request,
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+):
     """
     Fetch single product details by product ID.
     """
@@ -182,6 +222,15 @@ async def get_product_by_id(product_id: int, db: AsyncSession = Depends(get_db))
     product = result.scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail=f"Product with ID {product_id} not found")
+    base_url = get_public_base_url(request)
+    if product.enhanced_image_url and ("data/user/" in product.enhanced_image_url or "craft_" in product.enhanced_image_url):
+        import glob
+        files = sorted(glob.glob("uploads/products/*.webp"), key=os.path.getmtime, reverse=True)
+        if files:
+            rel = "/" + files[0].replace("\\", "/")
+            product.enhanced_image_url = f"{base_url}{rel}"
+    elif product.enhanced_image_url and product.enhanced_image_url.startswith("/"):
+        product.enhanced_image_url = f"{base_url}{product.enhanced_image_url}"
     return product
 
 
@@ -189,9 +238,10 @@ async def get_product_by_id(product_id: int, db: AsyncSession = Depends(get_db))
 
 @catalog_router.post("/create-ai", response_model=UnifiedAIProductResponse)
 async def create_product_with_ai(
+    request: Request,
     image: Optional[UploadFile] = File(None, description="Raw photo of artisan craft (JPEG/PNG/WebP)"),
     audio: Optional[UploadFile] = File(None, description="Voice description of craft (MP3/WAV/M4A)"),
-    artisan_id: str = Form(..., description="Unique ID of the artisan"),
+    artisan_id: str = Form("artisan_001", description="Unique ID of the artisan"),
     category: Optional[str] = Form(None, description="Optional craft category (e.g. 'Textiles', 'Pottery')"),
     language_hint: Optional[str] = Form(None, description="Optional ISO code (e.g. 'hi')"),
     raw_material_cost: Optional[float] = Form(None, description="Cost of raw materials invested by artisan in INR"),
@@ -254,8 +304,11 @@ async def create_product_with_ai(
             original_filename=image.filename,
             output_format="webp",
         )
-        image_url = image_result["url"]
+        base_url = get_public_base_url(request)
+        rel_url = image_result["url"]
+        image_url = f"{base_url}{rel_url}" if (rel_url and rel_url.startswith("/")) else rel_url
         quality_score = image_result["quality_score"]
+
 
     # 2. Voice Cataloger Processing (if voice note provided)
     detected_lang = "none"
@@ -381,6 +434,10 @@ async def create_product_with_ai(
         tags=seo_tags,
         materials_breakdown=final_materials,
         enhanced_image_url=image_url,
+        enhanced_url=image_url,
+        image_url=image_url,
+        image=image_url,
+        url=image_url,
         quality_score=quality_score,
         detected_language=detected_lang,
         raw_transcript=raw_transcript,
@@ -392,4 +449,5 @@ async def create_product_with_ai(
         raw_material_cost=raw_material_cost,
         min_profit=min_profit,
         cost_analysis=cost_analysis,
+        generated_by_model=final_listing.get("generated_by_model"),
     )
