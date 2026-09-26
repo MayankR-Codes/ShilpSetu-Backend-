@@ -33,7 +33,15 @@ uploads/
 *.flac
 *.aac
 
-# Scratch scripts & test outputs
+# Root-level scratch / one-off test scripts (not part of test suite)
+test_image.py
+test_pipeline.py
+test_pipeline_bypass.py
+test_translation.py
+test_voice.py
+test_voice2.py
+
+# Test output files
 *_output.json
 test_output.json
 translation_output.json
